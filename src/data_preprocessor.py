@@ -4,7 +4,7 @@ from typing import Dict, List
 import numpy as np
 from numpy.typing import ArrayLike
 import pandas as pd
-from sklearn.preprocessing import MinMaxScaler, StandardScaler
+from sklearn.preprocessing import StandardScaler
 import torch
 
 # Append project root to sys.path
@@ -137,6 +137,7 @@ class DataPreprocessor:
                 windows.append(window)
         return windows
 
+
     def create_sliding_window_dataset(self, data: List[ArrayLike], window_size: int, offset: int = 1) -> List[ArrayLike]:
         """
         Create a dataset with sliding windows
@@ -159,27 +160,18 @@ class DataPreprocessor:
         return np.array(X), np.array(y)
 
 
-    def scale_data(self, data, type: str = "minmax", scale_target: bool = False):
-        # Set up scalers
+    def scale_feature_inputs(self, data):
+        # Set up scaler
         feature_scaler = StandardScaler()
-        target_scaler = MinMaxScaler()
-        # if type == "minmax":
-        #     feature_scaler = MinMaxScaler()
-        #     target_scaler = MinMaxScaler()
-        # elif type == "standard":
-        #     feature_scaler = StandardScaler()
-        #     target_scaler = StandardScaler()
 
         # Scale the data
         for i, sample in enumerate(data):
             hr_signal = sample[:, -1].reshape(-1, 1)
             mfcc_values = sample[:, :-1]
             scaled_mffcs  = feature_scaler.fit_transform(mfcc_values)
-            if scale_target:
-                hr_signal = target_scaler.fit_transform(hr_signal)
             scaled_combined = np.concatenate((scaled_mffcs, hr_signal), axis=1)
             data[i] = scaled_combined
-        return data, target_scaler
+        return data
 
 
     def scale_sequences(self, mfcc_frames: List[torch.tensor], hr_signals: List[torch.tensor]) -> List[torch.tensor]:
