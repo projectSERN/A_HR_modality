@@ -18,16 +18,16 @@ from src.models import LSTM # noqa: E402
 from utils.model_trainers import LSTMTrainer # noqa: E402
 
 # Define constants
-RANDOM_SEED = 12
-EPOCHS = 200
+RANDOM_SEED = 7
+EPOCHS = 50
 LEARNING_RATE = 0.001
 BATCH_SIZE = 2
 INPUT_SIZE = 13
-HIDDEN_SIZE = 64
+HIDDEN_SIZE = 512
 OUTPUT_SIZE = 1
-NUM_LAYERS = 4
-DROPOUT = 0
-CLIP_LENGTH = 5
+NUM_LAYERS = 5
+DROPOUT = 0.3
+CLIP_LENGTH = 15
 
 # Set device
 if torch.cuda.is_available():
@@ -37,9 +37,9 @@ if torch.cuda.is_available():
 else:
     DEVICE = torch.device("cpu")
 
-SERN_V3_PATH = "../../DATASETS/PROJECTSERN_DATASET/v3/base_dataset_v3.npz"
-SERN_V4_PATH = "../../DATASETS/PROJECTSERN_DATASET/v4/base_dataset_v4.npz"
-KCON_PATH =  "../../DATASETS/K-EMOCON/base_dataset_kcon.npz"   
+SERN_V3_PATH = "/home/zceerba/projectSERN/DATASETS/PROJECTSERN_DATASET/v3/base_dataset_v3.npz"
+SERN_V4_PATH = "/home/zceerba/projectSERN/DATASETS/PROJECTSERN_DATASET/v4/base_dataset_v4.npz"
+KCON_PATH = "/home/zceerba/projectSERN/DATASETS/K-EMOCON/base_dataset_kcon.npz" 
 
 
 def main():
@@ -52,10 +52,13 @@ def main():
 
     sern_v3_data = processor.load_dataset(SERN_V3_PATH)
     sern_v4_data = processor.load_dataset(SERN_V4_PATH)
+    kcon_data = processor.load_dataset(KCON_PATH)
     sern_data = sern_v3_data + sern_v4_data
 
+    data = sern_data + kcon_data
+
     # Create clipped dataset
-    clipped_data = processor.create_clipped_dataset(sern_data, clip_length=CLIP_LENGTH)
+    clipped_data = processor.create_clipped_dataset(data, clip_length=CLIP_LENGTH)
 
     # Scaled data
     scaled_data = processor.scale_feature_inputs(clipped_data)
@@ -83,7 +86,7 @@ def main():
     val_loader = DataLoader(val_set, batch_size=BATCH_SIZE, shuffle=False, drop_last=False)
 
     model = LSTM(INPUT_SIZE, HIDDEN_SIZE, OUTPUT_SIZE, NUM_LAYERS, DROPOUT).to(DEVICE)
-    loss_func = nn.MSELoss()
+    loss_func = nn.HuberLoss(delta=0.5)
     optimiser = optim.Adam(model.parameters(), lr=LEARNING_RATE)
     scheduler = ReduceLROnPlateau(optimiser, mode='min', factor=0.5, patience=3)
     trainer = LSTMTrainer(train_loader, test_loader, val_loader, optimiser, scheduler, loss_func, model, EPOCHS)
