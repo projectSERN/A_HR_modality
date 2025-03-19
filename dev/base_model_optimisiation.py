@@ -28,8 +28,9 @@ else:
     DEVICE = torch.device("cpu")
 RANDOM_SEED = 7
 
-SERN_V3_PATH = "../../DATASETS/PROJECTSERN_DATASET/v3/base_dataset_v3.npz"
-SERN_V4_PATH = "../../DATASETS/PROJECTSERN_DATASET/v4/base_dataset_v4.npz"
+SERN_V3_PATH = "/home/zceerba/projectSERN/DATASETS/PROJECTSERN_DATASET/v3/base_dataset_v3.npz"
+SERN_V4_PATH = "/home/zceerba/projectSERN/DATASETS/PROJECTSERN_DATASET/v4/base_dataset_v4.npz"
+KCON_PATH = "/home/zceerba/projectSERN/DATASETS/K-EMOCON/base_dataset_kcon.npz"
 
 torch.manual_seed(RANDOM_SEED)
 
@@ -38,7 +39,9 @@ sern_data_v3 = processor.load_dataset(SERN_V3_PATH)
 sern_data_v4 = processor.load_dataset(SERN_V4_PATH)
 sern_data = sern_data_v3 + sern_data_v4
 
-datasets = [sern_data]
+kcon_data = processor.load_dataset(KCON_PATH)
+
+datasets = [sern_data + kcon_data]
 
 
 def create_clipped_dataset(data: List[ArrayLike], clip_length: int):
@@ -95,14 +98,14 @@ def objective(trial, datasets: List[ArrayLike]):
     # Instantiate LSTM model
     lstm = LSTM(in_dim=13, hidden_size=hidden_size, out_dim=1, num_layers=num_layers, dropout=dropout)
     lstm = lstm.to(DEVICE)
-    loss_func = nn.HuberLoss()
+    loss_func = nn.HuberLoss(delta=0.5)
     optimiser = torch.optim.Adam(lstm.parameters(), lr=learning_rate)
     scheduler = ReduceLROnPlateau(optimiser, mode="min", factor=0.5, patience=3)
 
     # Early stopping
     early_stopping = EarlyStopping(patience=5)
 
-    epochs = 100
+    epochs = 150
     # Training loop
     for epoch in range(epochs):
         lstm.train()
