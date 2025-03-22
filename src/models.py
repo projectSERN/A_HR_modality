@@ -35,3 +35,33 @@ class LSTMHiddenSummation(nn.Module):
         # Pass the hidden state summed with the output to the fully connected layer
         output = self.fc(fused)
         return output
+
+
+class CNN_LSTM(nn.Module):
+    def __init__(self, input_channels, cnn_channels, lstm_hidden, lstm_layers, output_dim, dropout, pool_size):
+        super(CNN_LSTM, self).__init__()
+        self.conv1 = nn.Conv2d(in_channels=input_channels, out_channels=cnn_channels, kernel_size=5)
+        self.conv2 = nn.Conv2d(in_channels=cnn_channels, out_channels=cnn_channels, kernel_size=5)
+        self.pool = nn.AdaptiveMaxPool2d(pool_size)
+        self.lstm = nn.LSTM(input_size=pool_size * cnn_channels, hidden_size=lstm_hidden, num_layers=lstm_layers, dropout=dropout, batch_first=True)
+        self.linear = nn.Linear(lstm_hidden, output_dim)
+        self.relu = nn.ReLU()
+
+    def forward(self, x):
+        # Input size (batch size, timesteps, features)
+        B, T, F = x.shape
+        x = x.view(B, 1, T, F) # Add channel dimension
+
+        # Convolutional layers
+        output = self.relu(self.conv1(x))
+        output = self.relu(self.conv2(output))
+
+        # Pooling
+        output = self.pool(output) # Output size (batch size, channels, pool_size, pool_size)
+        B, C, H, W = output.shape
+        output = output.view(B, H, W * C) # Output size (batch size, pool_size (aka sequence length), lstm_features)
+
+        # LSTM
+        output, _ = self.lstm(output)
+        output = self.linear(output)
+        return output
