@@ -15,7 +15,7 @@ project_root = os.path.join(os.path.dirname(__file__), "..")
 if project_root not in sys.path:
     sys.path.append(project_root)
 
-from src.models import LSTM # noqa: E402
+from src.models import LSTM, LSTMHiddenSummation, CNN_LSTM # noqa: E402
 from src.data_preprocessor import DataPreprocessor # noqa: E402
 from utils.early_stopping import EarlyStopping # noqa: E402
 
@@ -41,7 +41,7 @@ sern_data = sern_data_v3 + sern_data_v4
 
 kcon_data = processor.load_dataset(KCON_PATH)
 
-datasets = [sern_data + kcon_data]
+datasets = [sern_data]
 
 
 def create_clipped_dataset(data: List[ArrayLike], clip_length: int):
@@ -82,8 +82,10 @@ def objective(trial, datasets: List[ArrayLike]):
     batch_size = trial.suggest_categorical("batch_size", [2, 4, 8, 16, 32])
     learning_rate = trial.suggest_categorical("learning_rate", [1e-5, 1e-4, 1e-3])
     hidden_size = trial.suggest_categorical("hidden_size", [32, 64, 128, 256, 512])
-    clip_length = trial.suggest_categorical("clip_length", [5, 10, 15, 20, 25, 30])
+    # clip_length = trial.suggest_categorical("clip_length", [5, 10, 15, 20, 25, 30])
+    clip_length = 30
     num_layers = trial.suggest_int("num_layers", 2, 5)
+    cnn_channels = trial.suggest_categorical("cnn_channels", [8, 16, 32, 64])
     dropout = trial.suggest_categorical("dropout", [0.1, 0.2, 0.3, 0.4])
 
     # Create dataset
@@ -96,7 +98,7 @@ def objective(trial, datasets: List[ArrayLike]):
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, drop_last=False)
 
     # Instantiate LSTM model
-    lstm = LSTM(in_dim=13, hidden_size=hidden_size, out_dim=1, num_layers=num_layers, dropout=dropout)
+    lstm = CNN_LSTM(input_channels=1, cnn_channels=cnn_channels, lstm_hidden=hidden_size, output_dim=1, lstm_layers=num_layers, dropout=dropout, pool_size=clip_length)
     lstm = lstm.to(DEVICE)
     loss_func = nn.HuberLoss(delta=0.5)
     optimiser = torch.optim.Adam(lstm.parameters(), lr=learning_rate)
@@ -105,7 +107,7 @@ def objective(trial, datasets: List[ArrayLike]):
     # Early stopping
     early_stopping = EarlyStopping(patience=5)
 
-    epochs = 150
+    epochs = 100
     # Training loop
     for epoch in range(epochs):
         lstm.train()
@@ -155,7 +157,7 @@ def objective(trial, datasets: List[ArrayLike]):
     return val_rmses[-1]
 
 study = optuna.create_study(direction="minimize")
-study.optimize(lambda trial: objective(trial, datasets), n_trials=200, show_progress_bar=True)
+study.optimize(lambda trial: objective(trial, datasets), n_trials=150, show_progress_bar=True)
 
 print("Number of finished trials: ", len(study.trials))
 print("Best trial:")
