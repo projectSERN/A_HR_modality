@@ -14,20 +14,21 @@ if project_root not in sys.path:
     sys.path.append(project_root)
 
 from src.data_preprocessor import DataPreprocessor # noqa: E402
-from src.models import LSTM # noqa: E402
+from src.models import LSTM, LSTMHiddenSummation, CNN_LSTM, CNN_LSTM_2 # noqa: E402
 from utils.model_trainers import LSTMTrainer # noqa: E402
 
 # Define constants
 RANDOM_SEED = 7
 EPOCHS = 50
-LEARNING_RATE = 0.001
+LEARNING_RATE = 0.005
 BATCH_SIZE = 2
-INPUT_SIZE = 13
-HIDDEN_SIZE = 512
+INPUT_SIZE = 1
+HIDDEN_SIZE = 64
 OUTPUT_SIZE = 1
-NUM_LAYERS = 5
-DROPOUT = 0.3
-CLIP_LENGTH = 15
+NUM_LAYERS = 4
+DROPOUT = 0.4
+CLIP_LENGTH = 30
+CNN_CHANNELS = 16
 
 # Set device
 if torch.cuda.is_available():
@@ -40,7 +41,7 @@ else:
 SERN_V3_PATH = "/home/zceerba/projectSERN/DATASETS/PROJECTSERN_DATASET/v3/base_dataset_v3.npz"
 SERN_V4_PATH = "/home/zceerba/projectSERN/DATASETS/PROJECTSERN_DATASET/v4/base_dataset_v4.npz"
 KCON_PATH = "/home/zceerba/projectSERN/DATASETS/K-EMOCON/base_dataset_kcon.npz" 
-
+SUBSET = False
 
 def main():
     # Define random seed
@@ -66,6 +67,14 @@ def main():
     # Put dataset into tensor
     tensor_data = torch.tensor(scaled_data, device=DEVICE, dtype=torch.float32)
 
+    # Reduce the size of the dataset to make comparable with smaller SERN dataset
+    if SUBSET:
+        percentage = 0.6
+        np.random.seed(RANDOM_SEED)
+        num_keep_samples = int(tensor_data.shape[0] * percentage)
+        random_indices = np.random.choice(tensor_data.shape[0], num_keep_samples, replace=False)
+        tensor_data = tensor_data[random_indices]
+
     # Split data into features and targets
     features = tensor_data[:, :, :-1]
     targets = tensor_data[:, :, -1].unsqueeze(-1)
@@ -85,15 +94,16 @@ def main():
     val_set = [(X_val[i], y_val[i]) for i in range(len(X_val))]
     val_loader = DataLoader(val_set, batch_size=BATCH_SIZE, shuffle=False, drop_last=False)
 
-    model = LSTM(INPUT_SIZE, HIDDEN_SIZE, OUTPUT_SIZE, NUM_LAYERS, DROPOUT).to(DEVICE)
+    # model = LSTMHiddenSummation(INPUT_SIZE, HIDDEN_SIZE, OUTPUT_SIZE, NUM_LAYERS, DROPOUT).to(DEVICE)
+    model = CNN_LSTM(input_channels=INPUT_SIZE, cnn_channels=CNN_CHANNELS, lstm_hidden=HIDDEN_SIZE, lstm_layers=NUM_LAYERS, output_dim=1, dropout=DROPOUT, pool_size=CLIP_LENGTH).to(DEVICE)
     loss_func = nn.HuberLoss(delta=0.5)
     optimiser = optim.Adam(model.parameters(), lr=LEARNING_RATE)
     scheduler = ReduceLROnPlateau(optimiser, mode='min', factor=0.5, patience=3)
     trainer = LSTMTrainer(train_loader, test_loader, val_loader, optimiser, scheduler, loss_func, model, EPOCHS)
 
-    trainer.train(patience=5)
+    trainer.train(patience=3)
     trainer.evaluate(None, display=False)
-    trainer.plot_loss_curves(epoch_resolution=1, path="")
+    trainer.plot_loss_curves(epoch_resolution=1, path="/home/zceerba/projectSERN/audio_hr_v2/loss_curves.png")
 
 if __name__ == "__main__":
     main()
