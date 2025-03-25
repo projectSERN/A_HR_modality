@@ -20,14 +20,14 @@ from utils.model_trainers import LSTMTrainer # noqa: E402
 # Define constants
 RANDOM_SEED = 7
 EPOCHS = 50
-LEARNING_RATE = 0.005
+LEARNING_RATE = 0.0001
 BATCH_SIZE = 2
-INPUT_SIZE = 1
+INPUT_SIZE = 13
 HIDDEN_SIZE = 64
 OUTPUT_SIZE = 1
 NUM_LAYERS = 4
 DROPOUT = 0.4
-CLIP_LENGTH = 30
+CLIP_LENGTH = 20
 CNN_CHANNELS = 16
 
 # Set device
@@ -41,7 +41,8 @@ else:
 SERN_V3_PATH = "/home/zceerba/projectSERN/DATASETS/PROJECTSERN_DATASET/v3/base_dataset_v3.npz"
 SERN_V4_PATH = "/home/zceerba/projectSERN/DATASETS/PROJECTSERN_DATASET/v4/base_dataset_v4.npz"
 KCON_PATH = "/home/zceerba/projectSERN/DATASETS/K-EMOCON/base_dataset_kcon.npz" 
-SUBSET = False
+SUBSET = True
+SAVE = True
 
 def main():
     # Define random seed
@@ -56,7 +57,7 @@ def main():
     kcon_data = processor.load_dataset(KCON_PATH)
     sern_data = sern_v3_data + sern_v4_data
 
-    data = sern_data + kcon_data
+    data = kcon_data
 
     # Create clipped dataset
     clipped_data = processor.create_clipped_dataset(data, clip_length=CLIP_LENGTH)
@@ -95,7 +96,7 @@ def main():
     val_loader = DataLoader(val_set, batch_size=BATCH_SIZE, shuffle=False, drop_last=False)
 
     # model = LSTMHiddenSummation(INPUT_SIZE, HIDDEN_SIZE, OUTPUT_SIZE, NUM_LAYERS, DROPOUT).to(DEVICE)
-    model = CNN_LSTM(input_channels=INPUT_SIZE, cnn_channels=CNN_CHANNELS, lstm_hidden=HIDDEN_SIZE, lstm_layers=NUM_LAYERS, output_dim=1, dropout=DROPOUT, pool_size=CLIP_LENGTH).to(DEVICE)
+    model = LSTMHiddenSummation(in_dim=INPUT_SIZE, hidden_size=HIDDEN_SIZE, num_layers=NUM_LAYERS, out_dim=OUTPUT_SIZE, dropout=DROPOUT).to(DEVICE)
     loss_func = nn.HuberLoss(delta=0.5)
     optimiser = optim.Adam(model.parameters(), lr=LEARNING_RATE)
     scheduler = ReduceLROnPlateau(optimiser, mode='min', factor=0.5, patience=3)
@@ -104,6 +105,9 @@ def main():
     trainer.train(patience=3)
     trainer.evaluate(None, display=False)
     trainer.plot_loss_curves(epoch_resolution=1, path="/home/zceerba/projectSERN/audio_hr_v2/loss_curves.png")
+
+    if SAVE:
+        torch.save(trainer.model.state_dict(), "/home/zceerba/projectSERN/audio_hr_v2/utils/ahr_estimator.pt")
 
 if __name__ == "__main__":
     main()
