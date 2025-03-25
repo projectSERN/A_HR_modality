@@ -14,7 +14,7 @@ if project_root not in sys.path:
     sys.path.append(project_root)
 
 from src.data_preprocessor import DataPreprocessor # noqa: E402
-from src.models import LSTM, LSTMHiddenSummation, CNN_LSTM, CNN_LSTM_2 # noqa: E402
+from src.models import LSTM, LSTMHiddenSummation, CNN_LSTM # noqa: E402
 from utils.model_trainers import LSTMTrainer # noqa: E402
 
 # Define constants
