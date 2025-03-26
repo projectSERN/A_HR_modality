@@ -10,6 +10,7 @@ import librosa
 import librosa.display as ldisp
 from moviepy.audio.io.AudioFileClip import AudioFileClip
 from moviepy.audio.AudioClip import AudioArrayClip
+from sklearn.preprocessing import StandardScaler
 
 # Append project root to sys.path
 project_root = os.path.join(os.path.dirname(__file__), "..")
@@ -81,7 +82,7 @@ class FeatureExtractor:
             return AudioArrayClip(audio, fps=22050).duration
 
 
-    def feature_extraction(self, filepath: str, scaler):
+    def feature_extraction(self, filepath: str):
         # Check whether the path is a video or audio file
         ext = filepath.split(".")[-1]
         if ext in self.audio_exts:
@@ -94,19 +95,19 @@ class FeatureExtractor:
         # Improve SNR by reducing noise
         cleaned_signal = self.manipulator.reduce_noise(audio_signal, sr=22050)
 
+        normalised_audio_signal = self.manipulator.normalise_loudness(cleaned_signal, sampling_rate=22050, compression_strength=255, target_loudness=-23)
+
         # Find and prepare MFCCs
-        mfccs = self.find_mfccs(cleaned_signal, hop_length=22050)
+        mfccs = self.find_mfccs(normalised_audio_signal, hop_length=22050)
 
         # Transpose matrix
         mfccs = mfccs.T
-
+        
         # Scale the data
+        scaler = StandardScaler()
         scaled_mfccs = scaler.fit_transform(mfccs)
 
-        # Transform into tensor
-        mfccs_tensor = torch.tensor(scaled_mfccs, dtype=torch.float32)
-
-        return mfccs_tensor
+        return scaled_mfccs
 
 
     def detect_pauses(self, audio_signal: ArrayLike, sampling_rate: int, amplitude_threshold: float, time_frame_threshold: float) -> tuple[List[tuple[float, float]], ArrayLike]:
