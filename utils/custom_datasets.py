@@ -15,7 +15,7 @@ class SequenceDataset(Dataset):
         return self.sequences[index], self.lengths[index]
     
 
-def collate_fn(batch):
+def collate_seq_fn(batch):
     # Unpack sequences and lengths from the batch
     sequences, lengths = zip(*batch)
 
@@ -35,3 +35,16 @@ def collate_fn(batch):
 
     # Scale
     return features, target, lengths
+
+
+def collate_encoder_fn(batch, device):
+    features, labels = zip(*batch)
+    
+    # Convert to tensors
+    features = [torch.tensor(f, dtype=torch.float32, device=device) for f in features]
+    labels = torch.tensor(labels, dtype=torch.float32, device=device)
+    
+    # Pad sequences (batch_size, max_seq_len, num_features)
+    padded_features = pad_sequence(features, batch_first=True, padding_value=0)
+    
+    return padded_features, labels
