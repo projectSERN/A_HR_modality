@@ -123,7 +123,7 @@ class DataPreprocessor:
     
 
     def load_dataset(self, filepath: str) -> ArrayLike:
-        loaded_dataset = np.load(filepath)
+        loaded_dataset = np.load(filepath, allow_pickle=True)
         loaded_dataset = [loaded_dataset[key] for key in loaded_dataset.files]
         return loaded_dataset
 
