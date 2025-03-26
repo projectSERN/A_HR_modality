@@ -9,12 +9,13 @@ import torch
 from torch import nn
 import matplotlib.pyplot as plt
 import numpy as np
-from sklearn.metrics import root_mean_squared_error, mean_absolute_error
+from sklearn.metrics import root_mean_squared_error, mean_absolute_error, accuracy_score
 from scipy.stats import pearsonr
 from dtaidistance import dtw
 from frechetdist import frdist
 from rich.console import Console
 from rich.table import Table
+from tqdm import tqdm
 
 # Append project root to sys.path
 project_root = os.path.join(os.path.dirname(__file__), "..")
@@ -202,3 +203,87 @@ class LSTMTrainer(BaseLSTMTrainer):
         }
 
         self.display_test_results(results)
+
+
+class EncoderTrainer:
+    def __init__(self, train_loader, test_loader, val_loader, optimiser, scheduler, loss_function, model, epochs):
+        self.train_loader = train_loader
+        self.test_loader = test_loader
+        self.val_loader = val_loader
+        self.optimiser = optimiser
+        self.scheduler = scheduler
+        self.lf = loss_function
+        self.model = model
+        self.epochs = epochs
+        self.train_losses = []
+        self.val_losses = []
+        self.val_accuracies = []
+
+    def pre_train(self, patience: int, delta: int = 0.0) -> nn.Module:
+        # Define early stopping
+        early_stopping = EarlyStopping(patience=patience, delta=delta)
+
+        # Training loop
+        for epoch in tqdm(range(self.epochs), desc="Pre-training encoder", leave=True):
+
+            self.model.train()
+            train_loss = 0.0
+            for x_batch, y_batch in self.train_loader:
+                self.optimiser.zero_grad()
+                preds, _= self.model(x_batch)
+                loss = self.lf(preds.squeeze(), y_batch)
+                train_loss += loss.item()
+                loss.backward()
+                self.optimiser.step()
+
+            # Take the average loss from training each batch
+            train_loss /= len(self.train_loader)
+            self.train_losses.append(train_loss)
+
+            # Evaluation
+            self.model.eval()
+            val_loss = 0.0
+            val_accuracy = 0.0
+            with torch.no_grad():
+                for x_batch, y_batch in self.val_loader:
+                    self.optimiser.zero_grad()
+                    preds, _ = self.model(x_batch)
+                    loss = self.lf(preds.squeeze(), y_batch)
+                    val_loss += loss.item()
+                    # Calculate accuracy
+                    predictions = (preds > 0.5).float()
+                    accuracy = accuracy_score(y_batch.cpu(), predictions.cpu())
+                    val_accuracy += accuracy
+
+            # Take the average loss from validating each batch
+            val_loss /= len(self.val_loader)
+            self.val_losses.append(val_loss)
+            val_accuracy /= len(self.val_loader)
+            self.val_accuracies.append(val_accuracy)
+
+            # Early stopping
+            early_stopping(val_loss)
+            if early_stopping.early_stop:
+                print(f"Early stopping at epoch: {epoch}")
+                break
+
+            if epoch % 5 == 0:
+                print(f"Epoch: {epoch} | Train Loss: {self.train_losses[-1]: .3f} | Val Loss: {self.val_losses[-1]: .3f} | Val Accuracy: {self.val_accuracies[-1]: .3f}")
+        print("\n")
+
+
+    def plot_loss_curves(self, epoch_resolution: int, path: str) -> None:
+        sampled_epochs = list(range(0, len(self.train_losses), epoch_resolution))
+        sampled_train_losses = self.train_losses[::epoch_resolution]
+        sampled_val_losses = self.val_losses[::epoch_resolution]
+
+        plt.plot(sampled_epochs, sampled_train_losses, label="Training loss")
+        plt.plot(sampled_epochs, sampled_val_losses, label="Validation loss")
+        plt.grid()
+        plt.title("Training and loss curves during training")
+        plt.legend()
+        plt.xlabel("Epochs")
+        plt.ylabel("Loss")
+        if path:
+            plt.savefig(path)
+        plt.show()
