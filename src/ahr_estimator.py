@@ -17,6 +17,22 @@ class AHREstimator:
         self.extractor = FeatureExtractor()
         self.__load_model()
 
+
     def __load_model(self):
         self.model = LSTMHiddenSummation(in_dim=13, hidden_size=64, num_layers=4, dropout=0.4, out_dim=1)
-        self.model.load_state_dict(torch.load(self.model_path, map_location=self.device, weights_only=True))
+        self.model.load_state_dict(torch.load(self.model_path, weights_only=True))
+        self.model = self.model.to(self.device)
+        self.model.eval()
+
+    def estimate_hr(self, path: str):
+        # Extract MFCCs from video or audio path
+        mfccs = self.extractor.feature_extraction(path)
+
+        # Transform into tensor
+        mfccs_tensor = torch.tensor(mfccs, dtype=torch.float32).unsqueeze(0).to(self.device) # add batch dimension
+
+        # Estimate HR
+        with torch.no_grad():
+            hr = self.model(mfccs_tensor).squeeze(0).detach().cpu().numpy()
+
+        return hr
