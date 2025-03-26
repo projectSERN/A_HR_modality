@@ -84,13 +84,13 @@ class AHREncoder(nn.Module):
         out = self.relu(out)
         out = self.conv2(out)
         out = self.relu(out)
-        out = self.global_avg_pool(out)  # Output shape: (batch, 64, 1)
+        out = self.global_max_pool(out)  # Output shape: (batch, 64, 1)
         features = out.squeeze(-1)  # Remove the last dimension -> (batch, 64)
 
         out = self.classification(features)  # Final output
         preds = self.sigmoid(out)
         return preds, features
-    
+
     def initialize_weights(self):
         for m in self.modules():
             if isinstance(m, nn.Conv1d):
