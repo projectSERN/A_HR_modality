@@ -9,6 +9,8 @@ from torch.utils.data import DataLoader
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
 
+## /home/zceerba/.conda/envs/projectSERN/bin/python
+
 # Append project root to sys.path
 project_root = os.path.join(os.path.dirname(__file__), "..")
 if project_root not in sys.path:
@@ -21,8 +23,8 @@ from utils.custom_datasets import collate_encoder_fn
 
 # Define constants
 RANDOM_SEED = 7
-EPOCHS = 50
-LEARNING_RATE = 0.005
+EPOCHS = 100
+LEARNING_RATE = 0.0005
 BATCH_SIZE = 128
 # INPUT_SIZE = 13
 # HIDDEN_SIZE = 64
@@ -32,7 +34,6 @@ BATCH_SIZE = 128
 # CLIP_LENGTH = 20
 # CNN_CHANNELS = 16
 
-# Set device
 # Set device
 if torch.cuda.is_available():
     DEVICE_NUM = 0
@@ -91,7 +92,8 @@ def main():
 
     trainer = EncoderTrainer(train_loader, test_loader, val_loader, optimiser, scheduler, loss_func, model, EPOCHS)
     trainer.pre_train(patience=5)
-    trainer.plot_loss_curves(epoch_resolution=1, path="encoder_loss_curves.png")
+    trainer.plot_loss_curves(epoch_resolution=2, path="/scratch/zceerba/projectSERN/audio_hr_v2/encoder_loss_curves.png")
+    trainer.evaluate_pre_training()
 
 
 if __name__ == "__main__":
