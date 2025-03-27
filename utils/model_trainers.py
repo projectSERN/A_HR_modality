@@ -272,6 +272,21 @@ class EncoderTrainer:
         print("\n")
 
 
+    def evaluate_pre_training(self):
+        self.model.eval()
+        with torch.no_grad():
+            test_accuracy = 0.0
+            for x_batch, y_batch in self.test_loader:
+                self.optimiser.zero_grad()
+                preds, _ = self.model(x_batch)
+                predictions = (preds > 0.5).float()
+                accuracy = accuracy_score(y_batch.cpu(), predictions.cpu())
+                test_accuracy += accuracy
+
+        test_accuracy /= len(self.test_loader)
+        print(f"Test accuracy: {test_accuracy * 100: .3f}")
+
+
     def plot_loss_curves(self, epoch_resolution: int, path: str) -> None:
         sampled_epochs = list(range(0, len(self.train_losses), epoch_resolution))
         sampled_train_losses = self.train_losses[::epoch_resolution]
