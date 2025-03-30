@@ -257,6 +257,7 @@ class EncoderTrainer:
 
             # Take the average loss from validating each batch
             val_loss /= len(self.val_loader)
+            self.scheduler.step(val_loss)
             self.val_losses.append(val_loss)
             val_accuracy /= len(self.val_loader)
             self.val_accuracies.append(val_accuracy)
