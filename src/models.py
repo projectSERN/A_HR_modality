@@ -70,13 +70,25 @@ class CNN_LSTM(nn.Module):
 class AHREncoder(nn.Module):
     def __init__(self, num_features=1, num_classes=1):
         super(AHREncoder, self).__init__()
+        # Convolutional layers
         self.conv1 = nn.Conv1d(in_channels=num_features, out_channels=3, kernel_size=3, padding=1)
         self.conv2 = nn.Conv1d(in_channels=3, out_channels=16, kernel_size=3, padding=1)
         self.conv3 = nn.Conv1d(in_channels=16, out_channels=64, kernel_size=3, padding=1)
+
+        # Pooling layer
         self.global_max_pool = nn.AdaptiveMaxPool1d(1)  # Global Average Pooling
-        self.classification = nn.Linear(64, num_classes)  # Final classification/regression layer
+
+        # Fully connected layer
+        self.fc = nn.Linear(64, 256)
+
+        # Final classification layer
+        self.classification = nn.Linear(256, num_classes)
+
+        # Activation functions
         self.relu = nn.ReLU()
         self.sigmoid = nn.Sigmoid()
+
+        # Initialize weights
         self.initialize_weights()
 
     def forward(self, x):
@@ -91,7 +103,9 @@ class AHREncoder(nn.Module):
         out = self.relu(out)
 
         out = self.global_max_pool(out)  # Output shape: (batch, 64, 1)
-        features = out.squeeze(-1)  # Remove the last dimension -> (batch, 64)
+        out = out.squeeze(-1)  # Remove the last dimension -> (batch, 64)
+
+        features = self.fc(out)  # Fully connected layer
 
         out = self.classification(features)  # Final output
         preds = self.sigmoid(out)
