@@ -24,15 +24,8 @@ from utils.custom_datasets import collate_encoder_fn
 # Define constants
 RANDOM_SEED = 7
 EPOCHS = 100
-LEARNING_RATE = 0.0005
+LEARNING_RATE = 0.0001
 BATCH_SIZE = 128
-# INPUT_SIZE = 13
-# HIDDEN_SIZE = 64
-# OUTPUT_SIZE = 1
-# NUM_LAYERS = 4
-# DROPOUT = 0.4
-# CLIP_LENGTH = 20
-# CNN_CHANNELS = 16
 
 # Set device
 if torch.cuda.is_available():
@@ -88,10 +81,10 @@ def main():
     # Initialize optimizer and loss function
     loss_func = nn.BCELoss()
     optimiser = optim.Adam(model.parameters(), lr=LEARNING_RATE)
-    scheduler = ReduceLROnPlateau(optimiser, mode="min", factor=0.5, patience=3)
+    scheduler = ReduceLROnPlateau(optimiser, mode="min", factor=0.5, patience=2)
 
     trainer = EncoderTrainer(train_loader, test_loader, val_loader, optimiser, scheduler, loss_func, model, EPOCHS)
-    trainer.pre_train(patience=5)
+    trainer.pre_train(patience=3)
     trainer.plot_loss_curves(epoch_resolution=2, path="/scratch/zceerba/projectSERN/audio_hr_v2/encoder_loss_curves.png")
     trainer.evaluate_pre_training()
 
