@@ -74,6 +74,8 @@ class AHREncoder(nn.Module):
         self.conv1 = nn.Conv1d(in_channels=num_features, out_channels=3, kernel_size=3, padding=1)
         self.conv2 = nn.Conv1d(in_channels=3, out_channels=16, kernel_size=3, padding=1)
         self.conv3 = nn.Conv1d(in_channels=16, out_channels=64, kernel_size=3, padding=1)
+        self.conv4 = nn.Conv1d(in_channels=64, out_channels=128, kernel_size=3, padding=1)
+        self.conv_transpose = nn.ConvTranspose1d(in_channels=128, out_channels=64, kernel_size=3, padding=1)
 
         # Pooling layer
         self.global_max_pool = nn.AdaptiveMaxPool1d(1)  # Global Average Pooling
@@ -91,6 +93,7 @@ class AHREncoder(nn.Module):
         # Initialize weights
         self.initialize_weights()
 
+
     def forward(self, x):
         out = x.permute(0, 2, 1)  # Change shape from (batch, seq_len, features) to (batch, features, seq_len)
         out = self.conv1(out)
@@ -102,6 +105,13 @@ class AHREncoder(nn.Module):
         out = self.conv3(out)
         out = self.relu(out)
 
+        out = self.conv4(out)
+        out = self.relu(out)
+
+        # Upsample using convoltional transpose layer
+        out = self.conv_transpose(out)
+        out = self.relu(out)
+
         out = self.global_max_pool(out)  # Output shape: (batch, 64, 1)
         out = out.squeeze(-1)  # Remove the last dimension -> (batch, 64)
 
@@ -110,6 +120,7 @@ class AHREncoder(nn.Module):
         out = self.classification(features)  # Final output
         preds = self.sigmoid(out)
         return preds, features
+
 
     def initialize_weights(self):
         for m in self.modules():
