@@ -25,7 +25,7 @@ if project_root not in sys.path:
 from utils.early_stopping import EarlyStopping # noqa: E402
 
 
-class BaseLSTMTrainer:
+class ModelTrainer:
     def __init__(self, train_loader: ArrayLike,
                  test_loader: ArrayLike,
                  val_loader: ArrayLike,
@@ -76,7 +76,7 @@ class BaseLSTMTrainer:
         console.print(table)
 
 
-class LSTMTrainer(BaseLSTMTrainer):
+class LSTMTrainer(ModelTrainer):
     def __init__(self, train_loader: ArrayLike,
                  test_loader: ArrayLike,
                  val_loader: ArrayLike,
@@ -205,18 +205,9 @@ class LSTMTrainer(BaseLSTMTrainer):
         self.display_test_results(results)
 
 
-class EncoderTrainer:
+class EncoderTrainer(ModelTrainer):
     def __init__(self, train_loader, test_loader, val_loader, optimiser, scheduler, loss_function, model, epochs):
-        self.train_loader = train_loader
-        self.test_loader = test_loader
-        self.val_loader = val_loader
-        self.optimiser = optimiser
-        self.scheduler = scheduler
-        self.lf = loss_function
-        self.model = model
-        self.epochs = epochs
-        self.train_losses = []
-        self.val_losses = []
+        super().__init__(train_loader, test_loader, val_loader, optimiser, scheduler, loss_function, model, epochs)
         self.val_accuracies = []
 
     def pre_train(self, patience: int, delta: int = 0.0) -> nn.Module:
@@ -286,20 +277,3 @@ class EncoderTrainer:
 
         test_accuracy /= len(self.test_loader)
         print(f"Test accuracy: {test_accuracy * 100: .3f}")
-
-
-    def plot_loss_curves(self, epoch_resolution: int, path: str) -> None:
-        sampled_epochs = list(range(0, len(self.train_losses), epoch_resolution))
-        sampled_train_losses = self.train_losses[::epoch_resolution]
-        sampled_val_losses = self.val_losses[::epoch_resolution]
-
-        plt.plot(sampled_epochs, sampled_train_losses, label="Training loss")
-        plt.plot(sampled_epochs, sampled_val_losses, label="Validation loss")
-        plt.grid()
-        plt.title("Training and loss curves during training")
-        plt.legend()
-        plt.xlabel("Epochs")
-        plt.ylabel("Loss")
-        if path:
-            plt.savefig(path)
-        plt.show()

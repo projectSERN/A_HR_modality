@@ -72,7 +72,7 @@ def main():
     train_loader = DataLoader(train_set, batch_size=BATCH_SIZE, shuffle=True, collate_fn=partial_collate_fn)
     val_loader = DataLoader(val_set, batch_size=BATCH_SIZE, shuffle=False, collate_fn=partial_collate_fn)
     test_loader = DataLoader(test_set, batch_size=BATCH_SIZE, shuffle=False, collate_fn=partial_collate_fn)
-    print("DataLoaders created")
+    print("Dataloaders created")
 
     # Initialize model
     model = AHREncoder(num_features=1, num_classes=1)
