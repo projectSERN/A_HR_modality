@@ -6,7 +6,8 @@ import noisereduce as nr
 import numpy as np
 import pyloudnorm as pyln
 import librosa
-
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning, message="Possible clipped samples in output.")
 
 class AudioManipulator():
     def __init__(self) -> None:
