@@ -141,4 +141,7 @@ class AudioManipulator():
         # Normalise the loudness of the compressed audio signal
         normalised_audio = pyln.normalize.loudness(compressed_audio, loudness, target_loudness)
 
+        # Clip to ensure values fall within the range of -1 to 1
+        normalised_audio = np.clip(normalised_audio, -1, 1)
+
         return normalised_audio
