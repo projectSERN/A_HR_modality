@@ -33,7 +33,7 @@ class AudioManipulator():
         audio = audio.subclipped(0, duration)
 
         # Resample when converting to sound array
-        audio_array = audio.to_soundarray(fps=self.sir)
+        audio_array = audio.to_soundarray(fps=self.sr)
 
         # Convert from two-channel stereo to mono
         audio_array = np.mean(audio_array, axis=1)
