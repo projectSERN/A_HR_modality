@@ -89,7 +89,7 @@ class ModelTrainer:
         if not os.path.exists(path):
             print(f"Checkpoint not found at {path}")
         else:
-            checkpoint = torch.load(path, map_location=self.device)
+            checkpoint = torch.load(path, map_location=self.device, weights_only=True)
             self.model.load_state_dict(checkpoint["model"])
 
 
