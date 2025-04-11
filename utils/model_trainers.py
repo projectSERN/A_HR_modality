@@ -85,7 +85,6 @@ class ModelTrainer:
 
     def load_model(self):
         # Define path
-        # TODO: change path to match local files
         path = config.LOAD_PATH
         if not os.path.exists(path):
             print(f"Checkpoint not found at {path}")
