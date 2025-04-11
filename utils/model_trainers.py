@@ -66,7 +66,7 @@ class ModelTrainer:
         plt.show()
 
 
-    def save_checkpoint(self, mode):
+    def save_checkpoint(self, mode, path: str = ""):
         """
         Saves model weights to checkpoint .pth file
 
@@ -74,8 +74,9 @@ class ModelTrainer:
             - mode (str): 'best' or 'last' checkpoint to save
         """
         # Define path
-        path = f"/scratch/zceerba/projectSERN/audio_hr_v2/checkpoints/{mode}_model.pth"
-
+        if path == "":
+            path = f"/scratch/zceerba/projectSERN/audio_hr_v2/checkpoints/{mode}_model.pth"
+            
         # Define checkpoint
         checkpoint = {
             "model": self.model.state_dict()
@@ -83,9 +84,11 @@ class ModelTrainer:
         torch.save(checkpoint, path)
 
 
-    def load_model(self):
+    def load_model(self, path: str = ""):
         # Define path
-        path = config.LOAD_PATH
+        if path == "":
+            path = config.LOAD_PATH
+
         if not os.path.exists(path):
             print(f"Checkpoint not found at {path}")
         else:
@@ -114,13 +117,16 @@ class LSTMTrainer(ModelTrainer):
                  scheduler: torch.optim.lr_scheduler,
                  loss_function: torch.nn,
                  model: nn.Module,
-                 epochs: int):
-        super().__init__(train_loader, test_loader, val_loader, optimiser, scheduler, loss_function, model, epochs)
+                 epochs: int,
+                 device):
+        super().__init__(train_loader, test_loader, val_loader, optimiser, scheduler, loss_function, model, epochs, device)
+        self.val_rmses = []
+        self.best_rmse = float("inf")
         
     def train(self, patience: int, delta: int = 0.0) -> nn.Module:
 
         # Define early stopping
-        early_stopping = EarlyStopping(patience=patience, delta=delta)
+        early_stopping = EarlyStopping(patience=patience, delta=delta, mode="min")
 
         # Training loop
         for epoch in range(self.epochs):
@@ -141,30 +147,43 @@ class LSTMTrainer(ModelTrainer):
             # Evaluation
             self.model.eval()
             val_loss = 0.0
+            val_rmse = 0.0
             with torch.no_grad(): # Disable gradient tracking and computation
                 for x_batch, y_batch in self.val_loader:
                     self.optimiser.zero_grad()
                     hr_val_pred = self.model(x_batch)
                     loss = self.lf(hr_val_pred, y_batch)
                     val_loss += loss.item()
+                    rmse = root_mean_squared_error(y_batch.reshape(-1, 1).cpu(), hr_val_pred.reshape(-1, 1).cpu())
+                    val_rmse += rmse
 
             # Take the average loss from validating each batch
             val_loss /= len(self.val_loader)
+            val_rmse /= len(self.val_loader)
             self.val_losses.append(val_loss)
+            self.val_rmses.append(val_rmse)
             self.scheduler.step(val_loss)
+
+            # Save checkpoint if validation RMSE improves
+            if val_rmse < self.best_rmse:
+                self.best_rmse = val_rmse
+                self.save_checkpoint(mode="best", path="/scratch/zceerba/projectSERN/audio_hr_v2/checkpoints/best_lstm_model.pth")
 
             if epoch % 5 == 0:
                 print(f"Epoch: {epoch} | Train Loss: {self.train_losses[-1]: .2f} | Validation Loss: {self.val_losses[-1]: .2f}")
 
-            early_stopping(val_loss)
+            early_stopping(val_rmse)
             if early_stopping.early_stop:
                 print(f"Early stopping at Epoch {epoch}")
                 break
-
-        return self.model
+        
+        # Save the last checkpoint
+        self.save_checkpoint(mode="last", path="/scratch/zceerba/projectSERN/audio_hr_v2/checkpoints/last_lstm_model.pth")
 
 
     def evaluate(self, target_scaler: None, display: bool = False) -> tuple[float, float, float, float, float]:
+        # Load best model
+        self.load_model("/scratch/zceerba/projectSERN/audio_hr_v2/checkpoints/best_lstm_model.pth")
         # Test 
         self.model.eval()
         with torch.no_grad():
