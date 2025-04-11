@@ -23,6 +23,7 @@ if project_root not in sys.path:
     sys.path.append(project_root)
 
 from utils.early_stopping import EarlyStopping # noqa: E402
+from src.config import config # noqa: E402
 
 
 class ModelTrainer:
@@ -85,7 +86,7 @@ class ModelTrainer:
     def load_model(self):
         # Define path
         # TODO: change path to match local files
-        path = f"/scratch/zceerba/projectSERN/audio_hr_v2/checkpoints/best_model.pth"
+        path = config.LOAD_PATH
         if not os.path.exists(path):
             print(f"Checkpoint not found at {path}")
         else:
