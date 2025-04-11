@@ -19,17 +19,18 @@ if project_root not in sys.path:
 from src.data_preprocessor import DataPreprocessor # noqa: E402
 from src.models import AHREncoder
 from utils.model_trainers import EncoderTrainer # noqa: E402
-from utils.custom_datasets import collate_encoder_fn
+from utils.custom_datasets import collate_encoder_fn # noqa: E402
+from src.config import config
 
 # Define constants
 RANDOM_SEED = 7
 EPOCHS = 100
 LEARNING_RATE = 0.0001
-BATCH_SIZE = 128
+BATCH_SIZE = 64
 
 # Set device
 if torch.cuda.is_available():
-    DEVICE_NUM = 0
+    DEVICE_NUM = config.GPU
     torch.cuda.set_device(DEVICE_NUM)
     DEVICE = torch.device(f"cuda:{DEVICE_NUM}")
 else:
@@ -84,7 +85,7 @@ def main():
     scheduler = ReduceLROnPlateau(optimiser, mode="min", factor=0.5, patience=2)
 
     trainer = EncoderTrainer(train_loader, test_loader, val_loader, optimiser, scheduler, loss_func, model, EPOCHS, DEVICE)
-    # trainer.pre_train(patience=3)
+    trainer.pre_train(patience=5)
     trainer.plot_loss_curves(epoch_resolution=2, path="/scratch/zceerba/projectSERN/audio_hr_v2/encoder_loss_curves.png")
     trainer.evaluate_pre_training()
 
