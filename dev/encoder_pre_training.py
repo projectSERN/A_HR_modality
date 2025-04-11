@@ -83,7 +83,7 @@ def main():
     optimiser = optim.Adam(model.parameters(), lr=LEARNING_RATE)
     scheduler = ReduceLROnPlateau(optimiser, mode="min", factor=0.5, patience=2)
 
-    trainer = EncoderTrainer(train_loader, test_loader, val_loader, optimiser, scheduler, loss_func, model, EPOCHS)
+    trainer = EncoderTrainer(train_loader, test_loader, val_loader, optimiser, scheduler, loss_func, model, EPOCHS, DEVICE)
     trainer.pre_train(patience=3)
     trainer.plot_loss_curves(epoch_resolution=2, path="/scratch/zceerba/projectSERN/audio_hr_v2/encoder_loss_curves.png")
     trainer.evaluate_pre_training()

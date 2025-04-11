@@ -33,7 +33,8 @@ class ModelTrainer:
                  scheduler: torch.optim.lr_scheduler,
                  loss_function: torch.nn,
                  model: nn.Module,
-                 epochs: int):
+                 epochs: int,
+                 device):
         self.train_loader = train_loader
         self.test_loader = test_loader
         self.val_loader = val_loader
@@ -44,6 +45,7 @@ class ModelTrainer:
         self.epochs = epochs
         self.train_losses = []
         self.val_losses = []
+        self.device = device
 
 
     def plot_loss_curves(self, epoch_resolution: int, path: str) -> None:
@@ -61,6 +63,34 @@ class ModelTrainer:
         if path:
             plt.savefig(path)
         plt.show()
+
+
+    def save_checkpoint(self, mode):
+        """
+        Saves model weights to checkpoint .pth file
+
+        Arg(s):
+            - mode (str): 'best' or 'last' checkpoint to save
+        """
+        # Define path
+        path = f"/scratch/zceerba/projectSERN/audio_hr_v2/checkpoints/{mode}_model.pth"
+
+        # Define checkpoint
+        checkpoint = {
+            "model": self.model.state_dict()
+        }
+        torch.save(checkpoint, path)
+
+
+    def load_model(self):
+        # Define path
+        # TODO: change path to match local files
+        path = f"/scratch/zceerba/projectSERN/audio_hr_v2/checkpoints/best_model.pth"
+        if not os.path.exists(path):
+            print(f"Checkpoint not found at {path}")
+        else:
+            checkpoint = torch.load(path, map_location=self.device)
+            self.model.load_state_dict(checkpoint["model"])
 
 
     def display_test_results(self, test_results: dict[str, float]) -> None:
@@ -206,13 +236,15 @@ class LSTMTrainer(ModelTrainer):
 
 
 class EncoderTrainer(ModelTrainer):
-    def __init__(self, train_loader, test_loader, val_loader, optimiser, scheduler, loss_function, model, epochs):
-        super().__init__(train_loader, test_loader, val_loader, optimiser, scheduler, loss_function, model, epochs)
+    def __init__(self, train_loader, test_loader, val_loader, optimiser, scheduler, loss_function, model, epochs, device):
+        super().__init__(train_loader, test_loader, val_loader, optimiser, scheduler, loss_function, model, epochs, device)
         self.val_accuracies = []
+        self.val_aurocs = []
+        self.best_auroc = 0.0
 
     def pre_train(self, patience: int, delta: int = 0.0) -> nn.Module:
         # Define early stopping
-        early_stopping = EarlyStopping(patience=patience, delta=delta)
+        early_stopping = EarlyStopping(patience=patience, delta=delta, mode="max")
 
         # Training loop
         for epoch in tqdm(range(self.epochs), desc="Pre-training encoder", leave=True):
@@ -235,6 +267,7 @@ class EncoderTrainer(ModelTrainer):
             self.model.eval()
             val_loss = 0.0
             val_accuracy = 0.0
+            val_roc_auc = 0.0
             with torch.no_grad():
                 for x_batch, y_batch in self.val_loader:
                     self.optimiser.zero_grad()
@@ -244,27 +277,44 @@ class EncoderTrainer(ModelTrainer):
                     # Calculate accuracy
                     predictions = (preds > 0.5).float()
                     accuracy = accuracy_score(y_batch.cpu(), predictions.cpu())
+                    roc_auc = roc_auc_score(y_batch.cpu(), predictions.cpu())
                     val_accuracy += accuracy
+                    val_roc_auc += roc_auc
+
 
             # Take the average loss from validating each batch
             val_loss /= len(self.val_loader)
+            val_accuracy /= len(self.val_loader)
+            val_roc_auc /= len(self.val_loader)
             self.scheduler.step(val_loss)
             self.val_losses.append(val_loss)
-            val_accuracy /= len(self.val_loader)
             self.val_accuracies.append(val_accuracy)
+            self.val_aurocs.append(val_roc_auc)
+
+            # save checkpoint if validation AUROC improves
+            if val_roc_auc > self.best_auroc:
+                self.best_auroc = val_roc_auc
+                self.save_checkpoint(mode="best")
 
             # Early stopping
-            early_stopping(val_loss)
+            early_stopping(val_roc_auc)
             if early_stopping.early_stop:
                 print(f"Early stopping at epoch: {epoch}")
                 break
 
             if epoch % 5 == 0:
                 print(f"Epoch: {epoch} | Train Loss: {self.train_losses[-1]: .3f} | Val Loss: {self.val_losses[-1]: .3f} | Val Accuracy: {self.val_accuracies[-1]: .3f}")
+        
+        # Save the last checkpoint
+        self.save_checkpoint(mode="last")
+
         print("\n")
 
 
     def evaluate_pre_training(self):
+        # Load the best model
+        self.load_model()
+
         self.model.eval()
         with torch.no_grad():
             test_accuracy = 0.0
