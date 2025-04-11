@@ -9,7 +9,7 @@ import torch
 from torch import nn
 import matplotlib.pyplot as plt
 import numpy as np
-from sklearn.metrics import root_mean_squared_error, mean_absolute_error, accuracy_score
+from sklearn.metrics import root_mean_squared_error, mean_absolute_error, accuracy_score, roc_auc_score
 from scipy.stats import pearsonr
 from dtaidistance import dtw
 from frechetdist import frdist
@@ -268,12 +268,18 @@ class EncoderTrainer(ModelTrainer):
         self.model.eval()
         with torch.no_grad():
             test_accuracy = 0.0
+            test_roc_auc = 0.0
             for x_batch, y_batch in self.test_loader:
                 self.optimiser.zero_grad()
                 preds, _ = self.model(x_batch)
                 predictions = (preds > 0.5).float()
+                roc_auc = roc_auc_score(y_batch.cpu(), predictions.cpu())
                 accuracy = accuracy_score(y_batch.cpu(), predictions.cpu())
                 test_accuracy += accuracy
+                test_roc_auc += roc_auc
 
         test_accuracy /= len(self.test_loader)
-        print(f"Test accuracy: {test_accuracy * 100: .3f}")
+        test_roc_auc /= len(self.test_loader)
+        print(f"Test accuracy: {test_accuracy * 100: .3f} %")
+        print(f"Test ROC-AUC: {test_roc_auc * 100: .3f} %")
+        print("\n")
