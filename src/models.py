@@ -40,8 +40,8 @@ class LSTMHiddenSummation(nn.Module):
 class CNN_LSTM(nn.Module):
     def __init__(self, input_channels, cnn_channels, lstm_hidden, lstm_layers, output_dim, dropout, pool_size):
         super(CNN_LSTM, self).__init__()
-        self.conv1 = nn.Conv2d(in_channels=input_channels, out_channels=cnn_channels, kernel_size=5)
-        self.conv2 = nn.Conv2d(in_channels=cnn_channels, out_channels=cnn_channels, kernel_size=5)
+        self.conv1 = nn.Conv2d(in_channels=input_channels, out_channels=cnn_channels, kernel_size=2)
+        self.conv2 = nn.Conv2d(in_channels=cnn_channels, out_channels=cnn_channels, kernel_size=2)
         self.pool = nn.AdaptiveMaxPool2d(pool_size)
         self.lstm = nn.LSTM(input_size=pool_size * cnn_channels, hidden_size=lstm_hidden, num_layers=lstm_layers, dropout=dropout, batch_first=True)
         self.linear = nn.Linear(lstm_hidden, output_dim)
