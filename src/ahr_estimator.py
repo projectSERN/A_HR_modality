@@ -19,8 +19,9 @@ class AHREstimator:
 
 
     def __load_model(self):
-        self.model = LSTMHiddenSummation(in_dim=13, hidden_size=64, num_layers=4, dropout=0.4, out_dim=1)
-        self.model.load_state_dict(torch.load(self.model_path, weights_only=True))
+        self.model = LSTMHiddenSummation(in_dim=13, hidden_size=32, num_layers=5, dropout=0.4, out_dim=1)
+        checkpoint = torch.load(self.model_path, map_location=self.device, weights_only=True)
+        self.model.load_state_dict(checkpoint["model"])
         self.model = self.model.to(self.device)
         self.model.eval()
 
