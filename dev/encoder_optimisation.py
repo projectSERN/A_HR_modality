@@ -33,10 +33,10 @@ if torch.cuda.is_available():
     DEVICE = torch.device(f"cuda:{DEVICE_NUM}")
 else:
     DEVICE = torch.device("cpu")
-RANDOM_SEED = 7
+RANDOM_SEED = 9
 
 # Define path to dataset for encoder pre-training
-ITW_PATH = "/scratch/zceerba/DATASETS/release_in_the_wild/full_dataset.npz"
+ITW_PATH = "/scratch/zceerba/DATASETS/release_in_the_wild/full_dataset_v2.npz"
 
 # Define random seed
 torch.manual_seed(RANDOM_SEED)
@@ -52,7 +52,7 @@ print("Features and targets loaded")
 
 # Scale the data using MinMaxScaler
 scaler = MinMaxScaler()
-scaled_features = np.array([scaler.fit_transform(feature_array) for feature_array in features], dtype=object)
+scaled_features = np.array([scaler.fit_transform(feature_array) for feature_array in features], dtype=np.float32)
 print("Features scaled")
 
 
@@ -79,11 +79,10 @@ def objective(trial):
     """
     # Define hyperparameters to optimize
     batch_size = trial.suggest_categorical("batch_size", [16, 32, 64, 128, 256])
-    learning_rate = trial.suggest_float("learning_rate", 1e-5, 1e-1, log=True)
-    epochs = 100
+    learning_rate = trial.suggest_categorical("learning_rate", [1e-5, 1e-4, 1e-3, 1e-2])
+    epochs = 50
 
     partial_collate_fn = partial(collate_encoder_fn, device=DEVICE)
-
 
     # Create DataLoaders
     train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, collate_fn=partial_collate_fn)
@@ -100,7 +99,7 @@ def objective(trial):
     trainer = EncoderTrainer(train_loader, test_loader, val_loader, optimiser, scheduler, loss_func, model, epochs, DEVICE)
     trainer.pre_train(patience=5)
 
-    return trainer.val_auroc[-1]
+    return trainer.val_accuracies[-1]
 
 study = optuna.create_study(direction="maximize")
 study.optimize(objective, n_trials=50, show_progress_bar=True)
