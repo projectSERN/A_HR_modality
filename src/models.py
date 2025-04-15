@@ -138,7 +138,6 @@ class AHR_LSTMEncoder(nn.Module):
         self.lstm = nn.LSTM(input_size=num_features, hidden_size=hidden_size, num_layers=num_layers, batch_first=True, dropout=dropout)
         self.fc = nn.Linear(hidden_size, 256)
         self.classification = nn.Linear(256, num_classes)
-        self.relu = nn.ReLU()
         self.sigmoid = nn.Sigmoid()
         self.initialize_weights()
 
@@ -149,7 +148,6 @@ class AHR_LSTMEncoder(nn.Module):
         features = self.fc(out[:, -1, :])
 
         out = self.classification(features)
-        out = self.relu(out)
 
         preds = self.sigmoid(out)
 
