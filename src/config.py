@@ -18,5 +18,9 @@ parser.add_argument('-D','--DROPOUT', type=float, default=0.5, help='Dropout rat
 parser.add_argument('-H', '--HIDDEN_SIZE', type=int, default=128, help='Hidden size for the model')
 parser.add_argument('-NL', '--NUM_LAYERS', type=int, default=2, help='Number of layers for the model')
 
+# for base_model_training.py
+parser.add_argument('--SUBSET', type=bool, default=False, help='Use a subset of the data for training')
+parser.add_argument('--CLIP_LENGTH', type=int, default=10, help='Length of the clips for training')
+
 config = parser.parse_args()
 config.DEVICE = 'cuda' if config.GPU >= 0 else 'cpu'
