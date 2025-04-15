@@ -16,18 +16,19 @@ if project_root not in sys.path:
 from src.data_preprocessor import DataPreprocessor # noqa: E402
 from src.models import LSTM, LSTMHiddenSummation, CNN_LSTM # noqa: E402
 from utils.model_trainers import LSTMTrainer # noqa: E402
+from src.config import config
 
 # Define constants
 RANDOM_SEED = 7
-EPOCHS = 50
-LEARNING_RATE = 0.0001
-BATCH_SIZE = 2
+EPOCHS = config.EPOCHS
+LEARNING_RATE = config.LEARNING_RATE
+BATCH_SIZE = config.BATCH_SIZE
 INPUT_SIZE = 13
-HIDDEN_SIZE = 64
+HIDDEN_SIZE = config.HIDDEN_SIZE
 OUTPUT_SIZE = 1
-NUM_LAYERS = 4
-DROPOUT = 0.4
-CLIP_LENGTH = 20
+NUM_LAYERS = config.NUM_LAYERS
+DROPOUT = config.DROPOUT
+CLIP_LENGTH = config.CLIP_LENGTH
 CNN_CHANNELS = 16
 
 # Set device
@@ -41,8 +42,7 @@ else:
 SERN_V3_PATH = "/home/zceerba/projectSERN/DATASETS/PROJECTSERN_DATASET/v3/base_dataset_v3.npz"
 SERN_V4_PATH = "/home/zceerba/projectSERN/DATASETS/PROJECTSERN_DATASET/v4/base_dataset_v4.npz"
 KCON_PATH = "/home/zceerba/projectSERN/DATASETS/K-EMOCON/base_dataset_kcon.npz" 
-SUBSET = True
-SAVE = True
+SUBSET = config.SUBSET
 
 def main():
     # Define random seed
@@ -58,7 +58,6 @@ def main():
     sern_data = sern_v3_data + sern_v4_data
 
     data = kcon_data
-
     # Create clipped dataset
     clipped_data = processor.create_clipped_dataset(data, clip_length=CLIP_LENGTH)
 
@@ -70,7 +69,7 @@ def main():
 
     # Reduce the size of the dataset to make comparable with smaller SERN dataset
     if SUBSET:
-        percentage = 0.6
+        percentage = 0.62
         np.random.seed(RANDOM_SEED)
         num_keep_samples = int(tensor_data.shape[0] * percentage)
         random_indices = np.random.choice(tensor_data.shape[0], num_keep_samples, replace=False)
@@ -100,14 +99,12 @@ def main():
     loss_func = nn.HuberLoss(delta=0.5)
     optimiser = optim.Adam(model.parameters(), lr=LEARNING_RATE)
     scheduler = ReduceLROnPlateau(optimiser, mode='min', factor=0.5, patience=3)
-    trainer = LSTMTrainer(train_loader, test_loader, val_loader, optimiser, scheduler, loss_func, model, EPOCHS)
+    trainer = LSTMTrainer(train_loader, test_loader, val_loader, optimiser, scheduler, loss_func, model, EPOCHS, DEVICE)
 
-    trainer.train(patience=3)
+    trainer.train(patience=2)
     trainer.evaluate(None, display=False)
-    trainer.plot_loss_curves(epoch_resolution=1, path="/home/zceerba/projectSERN/audio_hr_v2/loss_curves.png")
+    trainer.plot_loss_curves(epoch_resolution=1, path="/scratch/zceerba/projectSERN/audio_hr_v2/loss_curves.png")
 
-    if SAVE:
-        torch.save(trainer.model.state_dict(), "/home/zceerba/projectSERN/audio_hr_v2/utils/ahr_estimator.pt")
 
 if __name__ == "__main__":
     main()
