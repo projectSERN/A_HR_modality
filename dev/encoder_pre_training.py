@@ -17,7 +17,7 @@ if project_root not in sys.path:
     sys.path.append(project_root)
 
 from src.models import AHR_LSTMEncoder
-from model_trainers import EncoderTrainer # noqa: E402
+from src.model_trainers import EncoderTrainer # noqa: E402
 from utils.custom_datasets import collate_encoder_fn # noqa: E402
 from utils.config import config
 
