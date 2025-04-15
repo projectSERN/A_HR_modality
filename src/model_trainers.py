@@ -332,7 +332,7 @@ class EncoderTrainer(ModelTrainer):
 
     def evaluate_pre_training(self):
         # Load the best model
-        self.load_model()
+        self.load_model(path="/scratch/zceerba/projectSERN/audio_hr_v2/checkpoints/best_encoder_model.pth")
 
         self.model.eval()
         with torch.no_grad():
