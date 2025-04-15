@@ -5,11 +5,6 @@ This repository contains all the code that:
 1. Optimises and trains an LSTM model to estimate HR from a speech signal
 2. Trains an encoder for 1st stage training in final implementation of project
 
-## Prerequisites
-List the tools, libraries, or dependencies required to run the files:
-- [Dependency 1](#)
-- [Dependency 2](#)
-
 ## Setup
 1. Clone the repository:
     ```bash
@@ -21,15 +16,26 @@ List the tools, libraries, or dependencies required to run the files:
     pip install -r requirements.txt
     ```
 
-## Relevant model parameters
+## Final model parameters
 ### A_HR estimator
+Uses the `LSTMHiddenSummation` model found [here](src/models.py) with the following model parameters
+
+| Parameter | Value |
+|----------------|----------------|
+| Input dimension| 13             | 
+| Hidden size    | 32             | 
+| Number of layers| 5             |
+| Dropout        | 0.4            |
+| Output dimension | 1            |
+
+
 ### A_HR encoder
+Uses the `AHR_LSTMEncoder` model found [here](src/models.py) with the following model parameters
 
-## Troubleshooting
-List common issues and solutions.
-
-## License
-State the license under which the project is distributed.
-
-## Contact
-Provide contact information for questions or contributions.
+| Parameter | Value |
+|----------------|----------------|
+| Input dimension| 1              | 
+| Hidden size    | 512            | 
+| Number of layers| 3             |
+| Dropout        | 0.2            |
+| Output dimension | 1            |
