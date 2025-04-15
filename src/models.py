@@ -135,7 +135,7 @@ class AHR_ConvEncoder(nn.Module):
 class AHR_LSTMEncoder(nn.Module):
     def __init__(self, hidden_size: int, num_layers: int, dropout: float, num_features=1, num_classes=1):
         super(AHR_LSTMEncoder, self).__init__()
-        self.lstm = nn.LSTM(input_size=1, hidden_size=hidden_size, num_layers=num_layers, batch_first=True, dropout=dropout)
+        self.lstm = nn.LSTM(input_size=num_features, hidden_size=hidden_size, num_layers=num_layers, batch_first=True, dropout=dropout)
         self.fc = nn.Linear(hidden_size, 256)
         self.classification = nn.Linear(256, num_classes)
         self.relu = nn.ReLU()
