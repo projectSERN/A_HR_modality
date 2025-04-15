@@ -24,7 +24,7 @@ from src.models import AHR_ConvEncoder # noqa: E402
 from utils.early_stopping import EarlyStopping # noqa: E402
 from utils.model_trainers import EncoderTrainer # noqa: E402
 from utils.custom_datasets import collate_encoder_fn # noqa: E402
-from src.config import config
+from utils.config import config
 
 # Set device
 if torch.cuda.is_available():

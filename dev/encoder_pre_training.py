@@ -19,7 +19,7 @@ if project_root not in sys.path:
 from src.models import AHR_LSTMEncoder
 from utils.model_trainers import EncoderTrainer # noqa: E402
 from utils.custom_datasets import collate_encoder_fn # noqa: E402
-from src.config import config
+from utils.config import config
 
 # Define constants
 RANDOM_SEED = 9

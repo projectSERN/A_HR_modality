@@ -23,7 +23,7 @@ if project_root not in sys.path:
     sys.path.append(project_root)
 
 from utils.early_stopping import EarlyStopping # noqa: E402
-from src.config import config # noqa: E402
+from utils.config import config # noqa: E402
 
 
 class ModelTrainer:

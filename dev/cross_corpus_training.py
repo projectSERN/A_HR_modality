@@ -15,7 +15,7 @@ from src.data_preprocessor import DataPreprocessor # noqa: E402
 from src.models import LSTM, LSTMHiddenSummation, CNN_LSTM # noqa: E402
 from utils.model_trainers import LSTMTrainer # noqa: E402
 from utils.corpus_helpers import create_cross_corpus # noqa: E402
-from src.config import config
+from utils.config import config
 
 # Define constants
 RANDOM_SEED = 7

@@ -13,7 +13,7 @@ if project_root not in sys.path:
 
 from src.feature_extractor import FeatureExtractor  # noqa: E402
 from src.ahr_estimator import AHREstimator # noqa: E402
-from src.config import config
+from utils.config import config
 
 dfdc_subsets_v2_path = '/scratch/zceerba/DATASETS/DFDC_subsets'
 

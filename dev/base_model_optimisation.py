@@ -20,7 +20,7 @@ if project_root not in sys.path:
 from src.models import LSTM, LSTMHiddenSummation, CNN_LSTM # noqa: E402
 from src.data_preprocessor import DataPreprocessor # noqa: E402
 from utils.early_stopping import EarlyStopping # noqa: E402
-from src.config import config
+from utils.config import config
 
 # Set device
 if torch.cuda.is_available():
