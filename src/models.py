@@ -67,9 +67,9 @@ class CNN_LSTM(nn.Module):
         return output
 
 
-class AHREncoder(nn.Module):
+class AHR_ConvEncoder(nn.Module):
     def __init__(self, num_features=1, num_classes=1):
-        super(AHREncoder, self).__init__()
+        super(AHR_ConvEncoder, self).__init__()
         # Convolutional layers
         self.conv1 = nn.Conv1d(in_channels=num_features, out_channels=3, kernel_size=3, padding=1)
         self.conv2 = nn.Conv1d(in_channels=3, out_channels=16, kernel_size=3, padding=1)
@@ -128,5 +128,35 @@ class AHREncoder(nn.Module):
                 nn.init.xavier_normal_(m.weight)
                 nn.init.zeros_(m.bias)
             elif isinstance(m, nn.Linear):
+                nn.init.xavier_normal_(m.weight)
+                nn.init.zeros_(m.bias)
+
+
+class AHR_LSTMEncoder(nn.Module):
+    def __init__(self, hidden_size: int, num_layers: int, dropout: float, num_features=1, num_classes=1):
+        super(AHR_LSTMEncoder, self).__init__()
+        self.lstm = nn.LSTM(input_size=1, hidden_size=hidden_size, num_layers=num_layers, batch_first=True, dropout=dropout)
+        self.fc = nn.Linear(hidden_size, 256)
+        self.classification = nn.Linear(256, num_classes)
+        self.relu = nn.ReLU()
+        self.sigmoid = nn.Sigmoid()
+        self.initialize_weights()
+
+    def forward(self, x):
+        out, _ = self.lstm(x)
+
+        # Learned features for second-stage training
+        features = self.fc(out[:, -1, :])
+
+        out = self.classification(features)
+        out = self.relu(out)
+
+        preds = self.sigmoid(out)
+
+        return preds, features
+
+    def initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
                 nn.init.xavier_normal_(m.weight)
                 nn.init.zeros_(m.bias)
