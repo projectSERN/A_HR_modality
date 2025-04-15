@@ -10,6 +10,8 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from sklearn.metrics import root_mean_squared_error
 from sklearn.model_selection import train_test_split
 
+# /home/zceerba/.conda/envs/projectSERN/bin/python
+
 # Append project root to sys.path
 project_root = os.path.join(os.path.dirname(__file__), "..")
 if project_root not in sys.path:
@@ -18,10 +20,11 @@ if project_root not in sys.path:
 from src.models import LSTM, LSTMHiddenSummation, CNN_LSTM # noqa: E402
 from src.data_preprocessor import DataPreprocessor # noqa: E402
 from utils.early_stopping import EarlyStopping # noqa: E402
+from src.config import config
 
 # Set device
 if torch.cuda.is_available():
-    DEVICE_NUM = 0
+    DEVICE_NUM = config.GPU
     torch.cuda.set_device(DEVICE_NUM)
     DEVICE = torch.device(f"cuda:{DEVICE_NUM}")
 else:
@@ -41,8 +44,7 @@ sern_data = sern_data_v3 + sern_data_v4
 
 kcon_data = processor.load_dataset(KCON_PATH)
 
-datasets = [sern_data]
-
+datasets = [kcon_data]
 
 def create_clipped_dataset(data: List[ArrayLike], clip_length: int):
     sets = []
@@ -79,11 +81,10 @@ def objective(trial, datasets: List[ArrayLike]):
     val_losses = []
     val_rmses = []
 
-    batch_size = trial.suggest_categorical("batch_size", [2, 4, 8, 16, 32])
+    batch_size = trial.suggest_categorical("batch_size", [2, 4, 8, 16, 32, 64])
     learning_rate = trial.suggest_categorical("learning_rate", [1e-5, 1e-4, 1e-3])
     hidden_size = trial.suggest_categorical("hidden_size", [32, 64, 128, 256, 512])
-    # clip_length = trial.suggest_categorical("clip_length", [5, 10, 15, 20, 25, 30])
-    clip_length = 30
+    clip_length = 10
     num_layers = trial.suggest_int("num_layers", 2, 5)
     cnn_channels = trial.suggest_categorical("cnn_channels", [8, 16, 32, 64])
     dropout = trial.suggest_categorical("dropout", [0.1, 0.2, 0.3, 0.4])
@@ -98,14 +99,14 @@ def objective(trial, datasets: List[ArrayLike]):
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, drop_last=False)
 
     # Instantiate LSTM model
-    lstm = CNN_LSTM(input_channels=1, cnn_channels=cnn_channels, lstm_hidden=hidden_size, output_dim=1, lstm_layers=num_layers, dropout=dropout, pool_size=clip_length)
+    lstm = LSTMHiddenSummation(in_dim=13, hidden_size=hidden_size, out_dim=1, num_layers=num_layers, dropout=dropout)
     lstm = lstm.to(DEVICE)
     loss_func = nn.HuberLoss(delta=0.5)
     optimiser = torch.optim.Adam(lstm.parameters(), lr=learning_rate)
     scheduler = ReduceLROnPlateau(optimiser, mode="min", factor=0.5, patience=3)
 
     # Early stopping
-    early_stopping = EarlyStopping(patience=5)
+    early_stopping = EarlyStopping(patience=5, mode="min")
 
     epochs = 100
     # Training loop
@@ -149,7 +150,7 @@ def objective(trial, datasets: List[ArrayLike]):
         if epoch % 5 == 0:
             print(f"Epoch: {epoch} | Train Loss: {train_losses[-1]: .2f} | Validation Loss: {val_losses[-1]: .2f}")
 
-        early_stopping(val_loss)
+        early_stopping(val_rmse)
         if early_stopping.early_stop:
             print(f"Early stopping at Epoch {epoch}")
             break
@@ -157,7 +158,7 @@ def objective(trial, datasets: List[ArrayLike]):
     return val_rmses[-1]
 
 study = optuna.create_study(direction="minimize")
-study.optimize(lambda trial: objective(trial, datasets), n_trials=150, show_progress_bar=True)
+study.optimize(lambda trial: objective(trial, datasets), n_trials=100, show_progress_bar=True)
 
 print("Number of finished trials: ", len(study.trials))
 print("Best trial:")
