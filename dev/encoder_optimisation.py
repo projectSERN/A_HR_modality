@@ -20,7 +20,7 @@ project_root = os.path.join(os.path.dirname(__file__), "..")
 if project_root not in sys.path:
     sys.path.append(project_root)
 
-from src.models import AHREncoder # noqa: E402
+from src.models import AHR_ConvEncoder # noqa: E402
 from utils.early_stopping import EarlyStopping # noqa: E402
 from utils.model_trainers import EncoderTrainer # noqa: E402
 from utils.custom_datasets import collate_encoder_fn # noqa: E402
@@ -67,7 +67,7 @@ val_set = list(zip(X_val, y_val))
 test_set = list(zip(X_test, y_test))
 
 # Initialize model
-model = AHREncoder(num_features=1, num_classes=1)
+model = AHR_ConvEncoder(num_features=1, num_classes=1)
 model.to(DEVICE)
 
 loss_func = nn.BCELoss()
@@ -80,6 +80,7 @@ def objective(trial):
     # Define hyperparameters to optimize
     batch_size = trial.suggest_categorical("batch_size", [16, 32, 64, 128, 256])
     learning_rate = trial.suggest_categorical("learning_rate", [1e-5, 1e-4, 1e-3, 1e-2])
+    lambda2 = trial.suggest_float('lambda2', 1e-6, 0.9, log=True)
     epochs = 50
 
     partial_collate_fn = partial(collate_encoder_fn, device=DEVICE)
@@ -90,10 +91,10 @@ def objective(trial):
     test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False, collate_fn=partial_collate_fn)
 
     # Initialize model
-    model = AHREncoder(num_features=1, num_classes=1).to(DEVICE)
+    model = AHR_ConvEncoder(num_features=1, num_classes=1).to(DEVICE)
 
     # Define loss function and optimizer
-    optimiser = optim.Adam(model.parameters(), lr=learning_rate)
+    optimiser = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=lambda2)
     scheduler = ReduceLROnPlateau(optimiser, mode="min", factor=0.5, patience=2)
 
     trainer = EncoderTrainer(train_loader, test_loader, val_loader, optimiser, scheduler, loss_func, model, epochs, DEVICE)
@@ -102,7 +103,7 @@ def objective(trial):
     return trainer.val_accuracies[-1]
 
 study = optuna.create_study(direction="maximize")
-study.optimize(objective, n_trials=50, show_progress_bar=True)
+study.optimize(objective, n_trials=100, show_progress_bar=True)
 
 print("Number of finished trials: ", len(study.trials))
 print("Best trial:")
