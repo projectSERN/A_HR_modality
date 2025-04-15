@@ -296,7 +296,7 @@ class EncoderTrainer(ModelTrainer):
                     # Calculate accuracy
                     predictions = (preds > 0.5).float()
                     accuracy = accuracy_score(y_batch.cpu(), predictions.cpu())
-                    roc_auc = roc_auc_score(y_batch.cpu(), predictions.cpu())
+                    roc_auc = roc_auc_score(y_batch.cpu(), preds.cpu())
                     val_accuracy += accuracy
                     val_roc_auc += roc_auc
 
@@ -342,7 +342,7 @@ class EncoderTrainer(ModelTrainer):
                 self.optimiser.zero_grad()
                 preds, _ = self.model(x_batch)
                 predictions = (preds > 0.5).float()
-                roc_auc = roc_auc_score(y_batch.cpu(), predictions.cpu())
+                roc_auc = roc_auc_score(y_batch.cpu(), preds.cpu())
                 accuracy = accuracy_score(y_batch.cpu(), predictions.cpu())
                 test_accuracy += accuracy
                 test_roc_auc += roc_auc
