@@ -313,7 +313,7 @@ class EncoderTrainer(ModelTrainer):
             # save checkpoint if validation AUROC improves
             if val_roc_auc > self.best_auroc:
                 self.best_auroc = val_roc_auc
-                self.save_checkpoint(mode="best")
+                self.save_checkpoint(mode="best", path="/scratch/zceerba/projectSERN/audio_hr_v2/checkpoints/best_encoder_model.pth")
 
             # Early stopping
             early_stopping(val_roc_auc)
@@ -325,7 +325,7 @@ class EncoderTrainer(ModelTrainer):
                 print(f"Epoch: {epoch} | Train Loss: {self.train_losses[-1]: .3f} | Val Loss: {self.val_losses[-1]: .3f} | Val Accuracy: {self.val_accuracies[-1]: .3f}")
         
         # Save the last checkpoint
-        self.save_checkpoint(mode="last")
+        self.save_checkpoint(mode="last", path="/scratch/zceerba/projectSERN/audio_hr_v2/checkpoints/last_encoder_model.pth")
 
         print("\n")
 
