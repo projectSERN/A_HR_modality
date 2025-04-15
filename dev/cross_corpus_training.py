@@ -12,26 +12,27 @@ if project_root not in sys.path:
     sys.path.append(project_root)
 
 from src.data_preprocessor import DataPreprocessor # noqa: E402
-from src.models import CNN_LSTM # noqa: E402
+from src.models import LSTM, LSTMHiddenSummation, CNN_LSTM # noqa: E402
 from utils.model_trainers import LSTMTrainer # noqa: E402
 from utils.corpus_helpers import create_cross_corpus # noqa: E402
+from src.config import config
 
 # Define constants
 RANDOM_SEED = 7
 EPOCHS = 50
-LEARNING_RATE = 0.005
-BATCH_SIZE = 2
-INPUT_SIZE = 1
-HIDDEN_SIZE = 64
+LEARNING_RATE = config.LEARNING_RATE
+BATCH_SIZE = config.BATCH_SIZE
+INPUT_SIZE = 13
+HIDDEN_SIZE = config.HIDDEN_SIZE
 OUTPUT_SIZE = 1
-NUM_LAYERS = 4
-DROPOUT = 0.4
-CLIP_LENGTH = 30
+NUM_LAYERS = config.NUM_LAYERS
+DROPOUT = config.DROPOUT
+CLIP_LENGTH = config.CLIP_LENGTH
 CNN_CHANNELS = 16
 
 # Set device
 if torch.cuda.is_available():
-    DEVICE_NUM = 0
+    DEVICE_NUM = config.GPU
     torch.cuda.set_device(DEVICE_NUM)
     DEVICE = torch.device(f"cuda:{DEVICE_NUM}")
 else:
@@ -40,7 +41,7 @@ else:
 SERN_V3_PATH = "/home/zceerba/projectSERN/DATASETS/PROJECTSERN_DATASET/v3/base_dataset_v3.npz"
 SERN_V4_PATH = "/home/zceerba/projectSERN/DATASETS/PROJECTSERN_DATASET/v4/base_dataset_v4.npz"
 KCON_PATH = "/home/zceerba/projectSERN/DATASETS/K-EMOCON/base_dataset_kcon.npz" 
-SUBSET = True
+SUBSET = config.SUBSET
 
 def main():
     # Define random seed
@@ -63,16 +64,14 @@ def main():
                                                                 device=DEVICE,
                                                                 random_seed=RANDOM_SEED,
                                                                 chosen_train_dataset="sern",
-                                                                reduce=True)
+                                                                reduce=SUBSET)
     
     # Instantiate model
-    lstm = CNN_LSTM(input_channels=INPUT_SIZE,
-                    lstm_hidden=HIDDEN_SIZE,
-                    output_dim=OUTPUT_SIZE,
-                    lstm_layers=NUM_LAYERS,
-                    dropout=DROPOUT,
-                    cnn_channels=CNN_CHANNELS,
-                    pool_size=CLIP_LENGTH)
+    lstm = LSTMHiddenSummation(in_dim=INPUT_SIZE,
+                    hidden_size=HIDDEN_SIZE,
+                    out_dim=OUTPUT_SIZE,
+                    num_layers=NUM_LAYERS,
+                    dropout=DROPOUT)
     lstm = lstm.to(DEVICE)
 
     # Define loss function and optimiser
@@ -88,7 +87,8 @@ def main():
                           train_loader=train_loader,
                           val_loader=val_loader,
                           test_loader=test_loader,
-                          epochs=EPOCHS)
+                          epochs=EPOCHS,
+                          device=DEVICE)
     
     trainer.train(patience=3)
     trainer.evaluate(None, display=False)
