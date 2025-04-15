@@ -16,17 +16,20 @@ project_root = os.path.join(os.path.dirname(__file__), "..")
 if project_root not in sys.path:
     sys.path.append(project_root)
 
-from src.data_preprocessor import DataPreprocessor # noqa: E402
-from src.models import AHREncoder
+from src.models import AHR_LSTMEncoder
 from utils.model_trainers import EncoderTrainer # noqa: E402
 from utils.custom_datasets import collate_encoder_fn # noqa: E402
 from src.config import config
 
 # Define constants
-RANDOM_SEED = 7
-EPOCHS = 100
-LEARNING_RATE = 0.0001
-BATCH_SIZE = 64
+RANDOM_SEED = 9
+EPOCHS = config.EPOCHS
+LEARNING_RATE = config.LEARNING_RATE
+BATCH_SIZE = config.BATCH_SIZE
+L2 = config.LAMBDA2
+HIDDEN_SIZE = config.HIDDEN_SIZE
+NUM_LAYERS = config.NUM_LAYERS
+DROPOUT = config.DROPOUT
 
 # Set device
 if torch.cuda.is_available():
@@ -37,8 +40,7 @@ else:
     DEVICE = torch.device("cpu")
 
 # Define path to dataset for encoder pre-training
-ITW_PATH = "/scratch/zceerba/DATASETS/release_in_the_wild/full_dataset.npz"
-
+ITW_PATH = "/scratch/zceerba/DATASETS/release_in_the_wild/full_dataset_v2.npz"
 
 def main():
     # Define random seed
@@ -55,9 +57,8 @@ def main():
 
     # Scale the data using MinMaxScaler
     scaler = MinMaxScaler()
-    scaled_features = np.array([scaler.fit_transform(feature_array) for feature_array in features], dtype=object)
+    scaled_features = np.array([scaler.fit_transform(feature_array) for feature_array in features], dtype=np.float32)
     print("Features scaled")
-
 
     # Split the data into training and validation sets
     X_train, X_test, y_train, y_test = train_test_split(scaled_features, labels, test_size=0.2, random_state=RANDOM_SEED)
@@ -76,16 +77,17 @@ def main():
     print("Dataloaders created")
 
     # Initialize model
-    model = AHREncoder(num_features=1, num_classes=1)
+    model = AHR_LSTMEncoder(num_features=1, num_classes=1, hidden_size=HIDDEN_SIZE, num_layers=NUM_LAYERS, dropout=DROPOUT)
     model.to(DEVICE)
 
     # Initialize optimizer and loss function
     loss_func = nn.BCELoss()
-    optimiser = optim.Adam(model.parameters(), lr=LEARNING_RATE)
+    optimiser = optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=L2)
     scheduler = ReduceLROnPlateau(optimiser, mode="min", factor=0.5, patience=2)
 
     trainer = EncoderTrainer(train_loader, test_loader, val_loader, optimiser, scheduler, loss_func, model, EPOCHS, DEVICE)
-    trainer.pre_train(patience=5)
+    print(f"Training configuration: BATCH SIZE = {BATCH_SIZE} | EPOCHS = {EPOCHS} | LEARNING RATE = {LEARNING_RATE} | L2 = {L2} | NUMBER OF LAYERS = {NUM_LAYERS} | HIDDEN SIZE = {HIDDEN_SIZE} | DROPOUT = {DROPOUT}")
+    trainer.pre_train(patience=10)
     trainer.plot_loss_curves(epoch_resolution=2, path="/scratch/zceerba/projectSERN/audio_hr_v2/encoder_loss_curves.png")
     trainer.evaluate_pre_training()
 
