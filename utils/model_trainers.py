@@ -273,7 +273,7 @@ class EncoderTrainer(ModelTrainer):
             for x_batch, y_batch in self.train_loader:
                 self.optimiser.zero_grad()
                 preds, _= self.model(x_batch)
-                loss = self.lf(preds.squeeze(), y_batch)
+                loss = self.lf(preds.squeeze(1), y_batch)
                 train_loss += loss.item()
                 loss.backward()
                 self.optimiser.step()
@@ -291,7 +291,7 @@ class EncoderTrainer(ModelTrainer):
                 for x_batch, y_batch in self.val_loader:
                     self.optimiser.zero_grad()
                     preds, _ = self.model(x_batch)
-                    loss = self.lf(preds.squeeze(), y_batch)
+                    loss = self.lf(preds.squeeze(1), y_batch)
                     val_loss += loss.item()
                     # Calculate accuracy
                     predictions = (preds > 0.5).float()
