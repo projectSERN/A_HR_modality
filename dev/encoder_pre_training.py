@@ -16,7 +16,7 @@ project_root = os.path.join(os.path.dirname(__file__), "..")
 if project_root not in sys.path:
     sys.path.append(project_root)
 
-from src.models import AHR_LSTMEncoder
+from src.models import AHR_LSTMEncoder, AHR_ConvEncoder # noqa: E402
 from src.model_trainers import EncoderTrainer # noqa: E402
 from utils.custom_datasets import collate_encoder_fn # noqa: E402
 from utils.config import config
@@ -30,6 +30,7 @@ L2 = config.LAMBDA2
 HIDDEN_SIZE = config.HIDDEN_SIZE
 NUM_LAYERS = config.NUM_LAYERS
 DROPOUT = config.DROPOUT
+MODEL = config.MODEL
 
 # Set device
 if torch.cuda.is_available():
@@ -77,7 +78,10 @@ def main():
     print("Dataloaders created")
 
     # Initialize model
-    model = AHR_LSTMEncoder(num_features=1, num_classes=1, hidden_size=HIDDEN_SIZE, num_layers=NUM_LAYERS, dropout=DROPOUT)
+    if MODEL == "lstm":
+        model = AHR_LSTMEncoder(num_features=1, num_classes=1, hidden_size=HIDDEN_SIZE, num_layers=NUM_LAYERS, dropout=DROPOUT)
+    elif MODEL == "conv":
+        model = AHR_ConvEncoder(num_features=1, num_classes=1)
     model.to(DEVICE)
 
     # Initialize optimizer and loss function
