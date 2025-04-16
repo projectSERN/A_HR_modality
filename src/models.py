@@ -68,13 +68,13 @@ class CNN_LSTM(nn.Module):
 
 
 class AHR_ConvEncoder(nn.Module):
-    def __init__(self, num_features=1, num_classes=1, kernel_size=3, padding=1):
+    def __init__(self, num_features=1, num_classes=1, kernel_size=3):
         super(AHR_ConvEncoder, self).__init__()
         # Convolutional layers
-        self.conv1 = nn.Conv1d(in_channels=num_features, out_channels=3, kernel_size=kernel_size, padding=padding)
-        self.conv2 = nn.Conv1d(in_channels=3, out_channels=16, kernel_size=kernel_size, padding=padding)
-        self.conv3 = nn.Conv1d(in_channels=16, out_channels=64, kernel_size=kernel_size, padding=padding)
-        self.conv4 = nn.Conv1d(in_channels=64, out_channels=128, kernel_size=kernel_size, padding=padding)
+        self.conv1 = nn.Conv1d(in_channels=num_features, out_channels=3, kernel_size=kernel_size)
+        self.conv2 = nn.Conv1d(in_channels=3, out_channels=16, kernel_size=kernel_size)
+        self.conv3 = nn.Conv1d(in_channels=16, out_channels=64, kernel_size=kernel_size)
+        self.conv4 = nn.Conv1d(in_channels=64, out_channels=128, kernel_size=kernel_size)
 
         # Pooling layer
         self.global_max_pool = nn.AdaptiveMaxPool1d(1)  # Global Average Pooling
