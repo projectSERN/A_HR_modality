@@ -1,28 +1,25 @@
 import os
 import sys
 from functools import partial
-from numpy.typing import ArrayLike
 import numpy as np
-from typing import List
 import optuna
 import torch
 import torch.nn as nn
 from torch import optim
 from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-from sklearn.metrics import root_mean_squared_error
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
-
+from sklearn.metrics import accuracy_score, roc_auc_score
+from tqdm import tqdm
 
 # Append project root to sys.path
 project_root = os.path.join(os.path.dirname(__file__), "..")
 if project_root not in sys.path:
     sys.path.append(project_root)
 
-from src.models import AHR_ConvEncoder # noqa: E402
+from src.models import AHR_ConvEncoder, AHR_LSTMEncoder # noqa: E402
 from utils.early_stopping import EarlyStopping # noqa: E402
-from model_trainers import EncoderTrainer # noqa: E402
 from utils.custom_datasets import collate_encoder_fn # noqa: E402
 from utils.config import config
 
@@ -33,7 +30,9 @@ if torch.cuda.is_available():
     DEVICE = torch.device(f"cuda:{DEVICE_NUM}")
 else:
     DEVICE = torch.device("cpu")
-RANDOM_SEED = 9
+
+RANDOM_SEED = 7
+MODEL = config.MODEL
 
 # Define path to dataset for encoder pre-training
 ITW_PATH = "/scratch/zceerba/DATASETS/release_in_the_wild/full_dataset_v2.npz"
@@ -66,22 +65,29 @@ train_set = list(zip(X_train, y_train))
 val_set = list(zip(X_val, y_val))
 test_set = list(zip(X_test, y_test))
 
-# Initialize model
-model = AHR_ConvEncoder(num_features=1, num_classes=1)
-model.to(DEVICE)
-
 loss_func = nn.BCELoss()
-
 
 def objective(trial):
     """
     Objective function for Optuna optimization.
     """
-    # Define hyperparameters to optimize
+    # Training hyperparameters to optimize
     batch_size = trial.suggest_categorical("batch_size", [16, 32, 64, 128, 256])
     learning_rate = trial.suggest_categorical("learning_rate", [1e-5, 1e-4, 1e-3, 1e-2])
     lambda2 = trial.suggest_float('lambda2', 1e-6, 0.9, log=True)
-    epochs = 50
+
+    # LSTM encoder hyperparameters
+    if MODEL == "lstm":
+        hidden_size = trial.suggest_categorical("hidden_size", [32, 64, 128, 256, 512])
+        dropout = trial.suggest_categorical("dropout", [0.1, 0.2, 0.3, 0.4, 0.5])
+        num_layers = trial.suggest_categorical("lstm_layers", [2, 3, 4, 5, 6])
+
+    # Convolutional encoder hyperparameters
+    elif MODEL == "conv":
+        kernel_size = trial.suggest_categorical("kernel_size", [2, 3, 4, 5])
+        padding = trial.suggest_categorical("padding", [1, 2, 3])
+
+    epochs = 100
 
     partial_collate_fn = partial(collate_encoder_fn, device=DEVICE)
 
@@ -91,22 +97,92 @@ def objective(trial):
     test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False, collate_fn=partial_collate_fn)
 
     # Initialize model
-    model = AHR_ConvEncoder(num_features=1, num_classes=1).to(DEVICE)
+    if MODEL == "lstm":
+        model = AHR_LSTMEncoder(hidden_size=hidden_size, num_layers=num_layers, dropout=dropout, num_features=1, num_classes=1).to(DEVICE)
+    elif MODEL == "conv":
+        model = AHR_ConvEncoder(kernel_size=kernel_size, padding=padding, num_features=1, num_classes=1).to(DEVICE)
+    model = model.to(DEVICE)
 
     # Define loss function and optimizer
     optimiser = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=lambda2)
-    scheduler = ReduceLROnPlateau(optimiser, mode="min", factor=0.5, patience=2)
+    scheduler = ReduceLROnPlateau(optimiser, mode="min", factor=0.5, patience=3)
 
-    trainer = EncoderTrainer(train_loader, test_loader, val_loader, optimiser, scheduler, loss_func, model, epochs, DEVICE)
-    trainer.pre_train(patience=5)
+    # Define early stopping
+    early_stopping = EarlyStopping(patience=5, delta=0.0, mode="max")
 
-    return trainer.val_accuracies[-1]
+    train_losses = []
+    val_losses = []
+    val_accuracies = []
+    val_aurocs = []
+
+    # Training loop
+    for epoch in tqdm(range(epochs), desc="Pre-training encoder", leave=True):
+
+        model.train()
+        train_loss = 0.0
+        for x_batch, y_batch in train_loader:
+            optimiser.zero_grad()
+            preds, _ = model(x_batch)
+            loss = loss_func(preds.squeeze(1), y_batch)
+            train_loss += loss.item()
+            loss.backward()
+            optimiser.step()
+
+        # Take the average loss from training each batch
+        train_loss /= len(train_loader)
+        train_losses.append(train_loss)
+
+        # Evaluation
+        model.eval()
+        val_loss = 0.0
+        val_accuracy = 0.0
+        val_roc_auc = 0.0
+        with torch.no_grad():
+            for x_batch, y_batch in val_loader:
+                optimiser.zero_grad()
+                preds, _ = model(x_batch)
+                loss = loss_func(preds.squeeze(1), y_batch)
+                val_loss += loss.item()
+
+                # Calculate accuracy
+                predictions = (preds > 0.5).float()
+                accuracy = accuracy_score(y_batch.cpu(), predictions.cpu())
+
+                # Check if both classes are present before calculating ROC AUC
+                if len(torch.unique(y_batch)) > 1:
+                    roc_auc = roc_auc_score(y_batch.cpu(), preds.cpu())
+                else:
+                    roc_auc = 0.5  # Assign a default value if only one class is present
+
+                val_accuracy += accuracy
+                val_roc_auc += roc_auc
+
+        # Take the average loss from validating each batch
+        val_loss /= len(val_loader)
+        val_accuracy /= len(val_loader)
+        val_roc_auc /= len(val_loader)
+        scheduler.step(val_loss)
+        val_losses.append(val_loss)
+        val_accuracies.append(val_accuracy)
+        val_aurocs.append(val_roc_auc)
+
+        # Early stopping
+        early_stopping(val_accuracy)
+        if early_stopping.early_stop:
+            print(f"Early stopping at epoch: {epoch}")
+            break
+
+        if epoch % 5 == 0:
+            print(f"Epoch: {epoch} | Train Loss: {train_losses[-1]: .3f} | Val Loss: {val_losses[-1]: .3f} | Val Accuracy: {val_accuracies[-1]: .3f}")
+
+    print("\n")
+
+    return val_accuracies[-1]
 
 study = optuna.create_study(direction="maximize")
-study.optimize(objective, n_trials=100, show_progress_bar=True)
+study.optimize(objective, n_trials=200, show_progress_bar=True)
 
 print("Number of finished trials: ", len(study.trials))
 print("Best trial:")
 print(study.best_params)
-
 
