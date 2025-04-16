@@ -22,20 +22,18 @@ Uses the `LSTMHiddenSummation` model found [here](src/models.py) with the follow
 
 | Parameter | Value |
 |----------------|----------------|
-| Input dimension| 13             | 
-| Hidden size    | 32             | 
-| Number of layers| 5             |
-| Dropout        | 0.4            |
+| Input dimension  | 13           | 
+| Hidden size      | 32           | 
+| Number of layers | 5            |
+| Dropout          | 0.4          |
 | Output dimension | 1            |
 
 
 ### A_HR encoder
-Uses the `AHR_LSTMEncoder` model found [here](src/models.py) with the following model parameters
+Uses the `AHR_ConvEncoder` model found [here](src/models.py) with the following model parameters
 
 | Parameter | Value |
 |----------------|----------------|
-| Input dimension| 1              | 
-| Hidden size    | 512            | 
-| Number of layers| 3             |
-| Dropout        | 0.2            |
-| Output dimension | 1            |
+| Number of features| 1           | 
+| Number of classes | 1           | 
+| Kernel size       | 3           |
