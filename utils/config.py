@@ -25,5 +25,10 @@ parser.add_argument('--PADDING', type=int, default=1, help='Padding for the conv
 parser.add_argument('--SUBSET', type=bool, default=False, help='Use a subset of the data for training')
 parser.add_argument('--CLIP_LENGTH', type=int, default=10, help='Length of the clips for training')
 
+# for dfdc processing
+parser.add_argument('--DFDC_PATH', type=str, default='/scratch/zceerba/DATASETS/DFDC_subsets', help='Path to the DFDC dataset')
+parser.add_argument('--SUBSET_FOLDERS', type=str, nargs="+", default=['subset_01', 'subset_02', 'subset_03', 'subset_04'], choices = ['subset_01', 'subset_02', 'subset_03', 'subset_04'], help='Comma-separated list of subset folders to process')
+parser.add_argument('--SPLIT_FOLDERS', type=str, nargs="+", default=['train', 'val', 'test'], choices = ['train', 'val', 'test'], help='Comma-separated list of split folders to process')
+
 config = parser.parse_args()
 config.DEVICE = 'cuda' if config.GPU >= 0 else 'cpu'

@@ -15,8 +15,9 @@ from src.feature_extractor import FeatureExtractor  # noqa: E402
 from src.ahr_estimator import AHREstimator # noqa: E402
 from utils.config import config
 
-dfdc_subsets_v2_path = '/scratch/zceerba/DATASETS/DFDC_subsets'
-
+dfdc_subsets_v2_path = config.DFDC_PATH
+chosen_subsets = config.SUBSET_FOLDERS
+chosen_splits = config.SPLIT_FOLDERS
 
 # Set device
 if torch.cuda.is_available():
@@ -25,8 +26,6 @@ if torch.cuda.is_available():
     DEVICE = torch.device(f"cuda:{DEVICE_NUM}")
 else:
     DEVICE = torch.device("cpu")
-
-chosen_subsets = ["subset_01", "subset_02", "subset_03", "subset_04"]
 
 def main():
     # Define classes
@@ -81,8 +80,6 @@ def main_npy():
     """
     Version 2 of the main function to save the AHR as numpy files.
     """
-    # Define classes
-    feature_extractor = FeatureExtractor()
     ahr_estimator = AHREstimator("/scratch/zceerba/projectSERN/audio_hr_v2/checkpoints/best_lstm_model.pth", device=DEVICE)
 
     for subset_folder in os.listdir(dfdc_subsets_v2_path):
@@ -90,7 +87,7 @@ def main_npy():
             subset_folder_path = os.path.join(dfdc_subsets_v2_path, subset_folder)
 
             for split_folder in os.listdir(subset_folder_path):
-                if split_folder in ['train', 'val', 'test']:
+                if split_folder in chosen_splits:
 
                     split_folder_path = os.path.join(subset_folder_path, split_folder)
 
@@ -113,7 +110,7 @@ def main_npy():
                             # Save the AHR as a numpy file
                             np.save(os.path.join(split_folder_path, "a_hr_seqs", f"{video_name}.npy"), ahr)    
 
-    print("DONE")
+    print("DONE") 
 
 if __name__ == "__main__":
     main_npy()
