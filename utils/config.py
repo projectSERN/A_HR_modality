@@ -18,6 +18,8 @@ parser.add_argument('-D','--DROPOUT', type=float, default=0.5, help='Dropout rat
 parser.add_argument('-H', '--HIDDEN_SIZE', type=int, default=128, help='Hidden size for the model')
 parser.add_argument('-NL', '--NUM_LAYERS', type=int, default=2, help='Number of layers for the model')
 parser.add_argument('--MODEL', type=str, default='lstm', choices=['lstm', 'conv'], help='Model name to use for training')
+parser.add_argument('-KS', '--KERNEL_SIZE', type=int, default=3, help='Kernel size for the convolutional model')
+parser.add_argument('--PADDING', type=int, default=1, help='Padding for the convolutional model')
 
 # for base_model_training.py
 parser.add_argument('--SUBSET', type=bool, default=False, help='Use a subset of the data for training')
