@@ -31,6 +31,8 @@ HIDDEN_SIZE = config.HIDDEN_SIZE
 NUM_LAYERS = config.NUM_LAYERS
 DROPOUT = config.DROPOUT
 MODEL = config.MODEL
+KERNEL_SIZE = config.KERNEL_SIZE
+PADDING = config.PADDING
 
 # Set device
 if torch.cuda.is_available():
@@ -46,6 +48,8 @@ ITW_PATH = "/scratch/zceerba/DATASETS/release_in_the_wild/full_dataset_v2.npz"
 def main():
     # Define random seed
     torch.manual_seed(RANDOM_SEED)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
     np.random.seed(RANDOM_SEED)
 
     # Load data
@@ -81,7 +85,7 @@ def main():
     if MODEL == "lstm":
         model = AHR_LSTMEncoder(num_features=1, num_classes=1, hidden_size=HIDDEN_SIZE, num_layers=NUM_LAYERS, dropout=DROPOUT)
     elif MODEL == "conv":
-        model = AHR_ConvEncoder(num_features=1, num_classes=1)
+        model = AHR_ConvEncoder(num_features=1, num_classes=1, kernel_size=KERNEL_SIZE)
     model.to(DEVICE)
 
     # Initialize optimizer and loss function
@@ -90,8 +94,9 @@ def main():
     scheduler = ReduceLROnPlateau(optimiser, mode="min", factor=0.5, patience=2)
 
     trainer = EncoderTrainer(train_loader, test_loader, val_loader, optimiser, scheduler, loss_func, model, EPOCHS, DEVICE)
-    print(f"Training configuration: BATCH SIZE = {BATCH_SIZE} | EPOCHS = {EPOCHS} | LEARNING RATE = {LEARNING_RATE} | L2 = {L2} | NUMBER OF LAYERS = {NUM_LAYERS} | HIDDEN SIZE = {HIDDEN_SIZE} | DROPOUT = {DROPOUT}")
-    trainer.pre_train(patience=10)
+    print(f"Training configuration: BATCH SIZE = {BATCH_SIZE} | EPOCHS = {EPOCHS} | LEARNING RATE = {LEARNING_RATE} | L2 = {L2}" +
+          f" | NUMBER OF LAYERS = {NUM_LAYERS} | HIDDEN SIZE = {HIDDEN_SIZE} | DROPOUT = {DROPOUT} | MODEL = {MODEL} | KERNEL SIZE = {KERNEL_SIZE} | PADDING = {PADDING}")
+    trainer.pre_train(patience=5)
     trainer.plot_loss_curves(epoch_resolution=2, path="/scratch/zceerba/projectSERN/audio_hr_v2/encoder_loss_curves.png")
     trainer.evaluate_pre_training()
 
