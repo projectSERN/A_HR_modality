@@ -296,10 +296,15 @@ class EncoderTrainer(ModelTrainer):
                     # Calculate accuracy
                     predictions = (preds > 0.5).float()
                     accuracy = accuracy_score(y_batch.cpu(), predictions.cpu())
-                    roc_auc = roc_auc_score(y_batch.cpu(), preds.cpu())
+
+                    # Check if both classes are present before calculating ROC AUC
+                    if len(torch.unique(y_batch)) > 1:
+                        roc_auc = roc_auc_score(y_batch.cpu(), preds.cpu())
+                    else:
+                        roc_auc = 0.5  # Assign a default value if only one class is present
+                    # roc_auc = roc_auc_score(y_batch.cpu(), preds.cpu())
                     val_accuracy += accuracy
                     val_roc_auc += roc_auc
-
 
             # Take the average loss from validating each batch
             val_loss /= len(self.val_loader)
